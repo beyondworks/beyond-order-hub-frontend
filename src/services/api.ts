@@ -3,7 +3,7 @@ import {
   Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry
 } from '../types';
 
-const API_BASE_URL = 'http://localhost:4000'; // Standard backend port
+const API_BASE_URL = 'https://beyond-order-hub-backend.onrender.com'; // Updated Render URL
 
 // Helper to get the auth token from localStorage
 function getAuthToken(): string | null {
