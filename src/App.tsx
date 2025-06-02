@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import * as api from './services/api'; // API service 임포트
 import { Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry, PlatformConfigField } from './types';
@@ -56,7 +57,7 @@ const AppContent: React.FC = () => {
   const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
   const [selectedOrderForShipping, setSelectedOrderForShipping] = useState<Order | null>(null);
 
-  const [appLoading, setAppLoading] = useState(true); // Handles initial app load, including auto-login check & initial data fetch
+  const [appLoading, setAppLoading] = useState(true); 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
 
@@ -64,93 +65,6 @@ const AppContent: React.FC = () => {
     master: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'platform-settings', 'errors'],
     user: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'errors'],
   };
-
-  const loadInitialData = useCallback(async () => {
-    if (!currentUser) {
-      setAppLoading(false);
-      return;
-    }
-    setAppLoading(true);
-    try {
-      // Fetch all data concurrently
-      const [
-        fetchedUsers, fetchedOrders, fetchedProducts,
-        fetchedStockMovements, fetchedReturnRequests,
-        fetchedPlatformConfigs, fetchedThreePLConfigData, fetchedErrorLogs
-      ] = await Promise.all([
-        api.fetchUsers().catch(e => { console.error("Error fetching users:", e); toastContext?.addToast('사용자 정보 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchOrders().catch(e => { console.error("Error fetching orders:", e); toastContext?.addToast('주문 정보 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchProducts().catch(e => { console.error("Error fetching products:", e); toastContext?.addToast('상품 정보 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchStockMovements().catch(e => { console.error("Error fetching stock movements:", e); toastContext?.addToast('재고 변동 내역 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchReturnRequests().catch(e => { console.error("Error fetching return requests:", e); toastContext?.addToast('반품 요청 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchPlatformConfigs().catch(e => { console.error("Error fetching platform configs:", e); toastContext?.addToast('플랫폼 설정 로딩 실패: ' + e.message, 'error'); return []; }),
-        api.fetchThreePLConfig().catch(e => { console.error("Error fetching 3PL config:", e); toastContext?.addToast('3PL 설정 로딩 실패: ' + e.message, 'error'); return null; }),
-        api.fetchErrorLogs().catch(e => { console.error("Error fetching error logs:", e); toastContext?.addToast('오류 로그 로딩 실패: ' + e.message, 'error'); return []; }),
-      ]);
-      
-      setUsers(fetchedUsers);
-      setAllOrders(fetchedOrders);
-      setProducts(fetchedProducts);
-      setStockMovements(fetchedStockMovements);
-      setReturnRequests(fetchedReturnRequests);
-      setPlatformConfigs(fetchedPlatformConfigs);
-      setThreePLConfig(fetchedThreePLConfigData);
-      setErrorLogs(fetchedErrorLogs);
-
-      // Only show success if all critical data loads (adjust as needed)
-      if (fetchedUsers && fetchedOrders && fetchedProducts) {
-        toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
-      }
-    } catch (error: any) { 
-      // This catch is a fallback, individual catches above are preferred for specific messages
-      toastContext?.addToast(error.message || '초기 데이터 로딩 중 전반적인 오류가 발생했습니다.', 'error');
-      console.error("Failed to load initial data (overall catch)", error);
-    } finally {
-      setAppLoading(false);
-    }
-  }, [currentUser, toastContext]);
-  
-  useEffect(() => {
-    // This effect now only handles the consequence of currentUser changing (i.e., load data or do nothing)
-    // The actual check for token and setting currentUser if token is valid should happen elsewhere or be simpler
-    // For instance, a /users/me endpoint would be ideal.
-    // Without it, we can't auto-login securely just by checking token existence.
-    // So, appLoading will mainly be true until explicit login, or if we implement a token validation flow.
-
-    if (currentUser) {
-        loadInitialData();
-    } else {
-        // If there's no currentUser, and a token might exist,
-        // we could try to validate it here. But for simplicity now,
-        // we assume user has to explicitly login.
-        // If no currentUser, ensure app is not stuck in loading.
-        setAppLoading(false); 
-        const hash = window.location.hash.replace('#', '');
-        if (hash !== 'login' && hash !== '') {
-            setCurrentPage('login'); // Set state
-            window.location.hash = 'login'; // Force hash
-        }
-    }
-  }, [currentUser, loadInitialData]); // loadInitialData added
-
-
-  const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
-    setIsLoggingIn(true);
-    try {
-      const userFromApi = await api.login(username, passwordAttempt); // api.login now stores token and returns user
-      setCurrentUser(userFromApi); 
-      const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
-      handleNavigation(defaultPage); 
-      toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
-      // loadInitialData will be triggered by useEffect watching currentUser
-      return true;
-    } catch (error: any) {
-      toastContext?.addToast(error.message || '로그인 중 오류가 발생했습니다.', 'error');
-      return false;
-    } finally {
-      setIsLoggingIn(false);
-    }
-  }, [toastContext]);
 
   const handleLogout = useCallback(() => {
     const userName = currentUser?.name;
@@ -167,8 +81,107 @@ const AppContent: React.FC = () => {
     setErrorLogs([]);
     setCurrentPage('login'); 
     window.location.hash = 'login';
-    toastContext?.addToast(`${userName || '사용자'}님이 로그아웃하였습니다.`, 'info');
+    if (userName) { // Only show logout message if a user was actually logged in
+        toastContext?.addToast(`${userName}님이 로그아웃하였습니다.`, 'info');
+    }
   }, [currentUser, toastContext]);
+
+  const loadInitialData = useCallback(async () => {
+    if (!currentUser) {
+      setAppLoading(false);
+      return;
+    }
+    setAppLoading(true);
+    try {
+      const [
+        fetchedUsers, fetchedOrders, fetchedProducts,
+        fetchedStockMovements, fetchedReturnRequests,
+        fetchedPlatformConfigs, fetchedThreePLConfigData, fetchedErrorLogs
+      ] = await Promise.all([
+        api.fetchUsers(),
+        api.fetchOrders(),
+        api.fetchProducts(),
+        api.fetchStockMovements(),
+        api.fetchReturnRequests(),
+        api.fetchPlatformConfigs(),
+        api.fetchThreePLConfig(),
+        api.fetchErrorLogs(),
+      ]);
+      
+      setUsers(fetchedUsers || []);
+      setAllOrders(fetchedOrders || []);
+      setProducts(fetchedProducts || []);
+      setStockMovements(fetchedStockMovements || []);
+      setReturnRequests(fetchedReturnRequests || []);
+      setPlatformConfigs(fetchedPlatformConfigs || []);
+      setThreePLConfig(fetchedThreePLConfigData || null);
+      setErrorLogs(fetchedErrorLogs || []);
+
+      // Consider if any of these are truly "critical" for a success message.
+      // If any return null/empty due to non-AUTH error, it might still be a partial success.
+      toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
+
+    } catch (error: any) { 
+      console.error("Failed to load initial data:", error);
+      if (error.message && error.message.startsWith('AUTH_ERROR:')) {
+        toastContext?.addToast(error.message.replace('AUTH_ERROR: ', ''), 'error');
+        handleLogout(); // Call centralized logout logic
+      } else {
+        toastContext?.addToast(error.message || '초기 데이터 로딩 중 오류가 발생했습니다.', 'error');
+        // Depending on severity, could also trigger a partial or full logout,
+        // or allow user to retry. For now, just show error.
+      }
+    } finally {
+      setAppLoading(false);
+    }
+  }, [currentUser, toastContext, handleLogout]); // handleLogout added as dependency
+  
+  useEffect(() => {
+    if (currentUser) {
+        loadInitialData();
+    } else {
+        // Attempt to auto-login or verify token might go here in a more complex app
+        // For now, if no currentUser, ensure app is not stuck in loading.
+        const token = localStorage.getItem('authToken'); // Check if a token exists
+        if (token) {
+            // If a token exists but no currentUser, it implies an app reload or
+            // a previous session. We should try to validate this token with a '/users/me' endpoint.
+            // Lacking that, if we try loadInitialData and it fails with AUTH_ERROR,
+            // the `loadInitialData`'s catch block will handle logout.
+            // This is a placeholder for a more robust auto-login check.
+            // For now, we'll assume login is explicit.
+            // If we assume a token means a valid session, we might try to set a dummy user to trigger load,
+            // but that's risky. It's better if login sets currentUser and then data loads.
+            // If there is a token, we could try to fetch a protected /me endpoint.
+            // If it fails with 401, then call handleLogout.
+        }
+        setAppLoading(false); 
+        const hash = window.location.hash.replace('#', '');
+        if (hash !== 'login' && hash !== '') {
+            setCurrentPage('login'); 
+            window.location.hash = 'login'; 
+        }
+    }
+  }, [currentUser, loadInitialData]);
+
+
+  const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
+    setIsLoggingIn(true);
+    try {
+      const userFromApi = await api.login(username, passwordAttempt); // api.login now returns User directly
+      setCurrentUser(userFromApi); 
+      const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
+      handleNavigation(defaultPage); 
+      toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
+      return true;
+    } catch (error: any) {
+      toastContext?.addToast(error.message || '로그인 중 오류가 발생했습니다.', 'error');
+      return false;
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, [toastContext]);
+
 
   const handleNavigation = (page: string) => {
     if (!currentUser && page !== 'login') {
@@ -210,17 +223,15 @@ const AppContent: React.FC = () => {
     try {
       const updatedDetail = await api.saveOrderFulfillment(orderId, shippingCarrier, trackingNumber);
       if (updatedDetail) {
-        setSelectedOrderForModal(updatedDetail); // Update modal content
-        // Update the main order list
+        setSelectedOrderForModal(updatedDetail); 
         setAllOrders(prev => prev.map(o => o.id === orderId ? 
             {...o, 
-             status: updatedDetail.status, // Assuming backend returns updated status in OrderDetail
+             status: updatedDetail.status, 
              shippingInfo: {carrier: shippingCarrier, trackingNumber, shippingDate: new Date().toISOString()}} 
             : o));
         toastContext?.addToast('송장 정보가 저장되었습니다.', 'success');
         return true;
       }
-      // Should not be reached if API throws on error or returns null for actual failure
       toastContext?.addToast('송장 정보 저장 실패 (서버 응답 없음).', 'error');
       return false; 
     } catch (error: any) {
@@ -267,7 +278,7 @@ const AppContent: React.FC = () => {
         setReturnRequests(prevRequests =>
           prevRequests.map(req => (req.id === updatedRequest.id ? updatedRequest : req))
         );
-        if (updatedRequest.orderId) { // Ensure orderId exists
+        if (updatedRequest.orderId) { 
             setAllOrders(prevOrders =>
               prevOrders.map(order =>
                 order.id === updatedRequest.orderId
@@ -276,7 +287,7 @@ const AppContent: React.FC = () => {
               )
             );
         }
-        setSelectedReturnForModal(updatedRequest); // Update modal content
+        setSelectedReturnForModal(updatedRequest); 
         toastContext?.addToast(`반품 ID ${returnRequestId} 수거 접수가 요청되었습니다.`, 'info');
         return true;
       }
@@ -349,10 +360,8 @@ const AppContent: React.FC = () => {
     try {
       const addedProduct = await api.addProduct(newProductData);
       setProducts(prevProducts => [...prevProducts, addedProduct]);
-      // If backend creates initial stock movement, it will be reflected in next stock movement fetch
-      // or returned with product. Here, if stockQuantity > 0, we'll refetch stock movements.
       if (addedProduct.stockQuantity > 0) {
-          const fetchedStockMovements = await api.fetchStockMovements(); // Refetch to get initial stock movement
+          const fetchedStockMovements = await api.fetchStockMovements(); 
           setStockMovements(fetchedStockMovements);
       }
       toastContext?.addToast('새 상품이 추가되었습니다.', 'success');
@@ -401,17 +410,15 @@ const AppContent: React.FC = () => {
   const handleAddStockMovement = async (newMovementData: Omit<StockMovement, 'id' | 'currentStockAfterMovement'>): Promise<boolean> => {
     try {
       const addedMovement = await api.addStockMovement(newMovementData);
-      // Add to local state and re-sort
       setStockMovements(prevMovements => [addedMovement, ...prevMovements].sort((a,b) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
       
-      // Update the corresponding product's stock quantity
       if (addedMovement.productId && addedMovement.currentStockAfterMovement !== undefined) {
         setProducts(prevProducts =>
           prevProducts.map(p =>
             p.id === addedMovement.productId ? { ...p, stockQuantity: addedMovement.currentStockAfterMovement!, updatedAt: new Date().toISOString() } : p
           )
         );
-      } else { // Fallback if currentStockAfterMovement is not in response
+      } else { 
           const updatedProducts = await api.fetchProducts();
           setProducts(updatedProducts);
       }
@@ -437,12 +444,10 @@ const AppContent: React.FC = () => {
     try {
       const result = await api.processShipment(orderId, carrier, trackingNumber);
       if (result.order) {
-        // Update order in allOrders
         setAllOrders(prevOrders =>
           prevOrders.map(o => (o.id === result.order!.id ? result.order! : o))
         );
         
-        // Update product stock quantities based on newMovements
         const productUpdates = new Map<string, number>();
         result.newMovements.forEach(sm => {
             if (sm.productId && sm.currentStockAfterMovement !== undefined) {
@@ -453,7 +458,6 @@ const AppContent: React.FC = () => {
             productUpdates.has(p.id) ? {...p, stockQuantity: productUpdates.get(p.id)!} : p
         ));
 
-        // Add new stock movements and re-sort
         setStockMovements(prevMoves => [...result.newMovements, ...prevMoves].sort((a,b) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
         
         toastContext?.addToast(`주문 ${orderId}이(가) 발송 처리되었습니다.`, 'success');
@@ -475,17 +479,13 @@ const AppContent: React.FC = () => {
     const updatedFields = currentConfig.fields.map(f => f.id === fieldId ? {...f, value} : f);
     const configToSave: PlatformConfig = {...currentConfig, fields: updatedFields};
     
-    // No individual save for field, entire config saved by onSavePlatformConfig
-    // This local update is for UI responsiveness before explicit save
     setPlatformConfigs(prev => prev.map(p => p.id === platformId ? configToSave : p));
-    // Toast for individual field change might be too noisy, save button provides overall feedback.
   };
 
   const handleTogglePlatformActive = async (platformId: string) => {
     const currentConfig = platformConfigs.find(p => p.id === platformId);
     if (!currentConfig) return;
     try {
-        // api.togglePlatformActive now expects the full config to decide the new state and PUT it
         const updatedConfig = await api.togglePlatformActive(platformId, currentConfig);
         setPlatformConfigs(prev => prev.map(p => p.id === platformId ? updatedConfig : p));
         toastContext?.addToast(`${updatedConfig.name} 연동이 ${updatedConfig.isActive ? '활성화' : '비활성화'}되었습니다.`, 'info');
@@ -522,7 +522,6 @@ const AppContent: React.FC = () => {
   const handleUpdateThreePLConfigValue = async (field: keyof Omit<ThreePLConfig, 'connectionStatus'|'lastTest'| 'id'>, value: string) => {
     if(!threePLConfig) return;
     const configToUpdate: ThreePLConfig = { ...threePLConfig, [field]: value };
-    // Local update for responsiveness, actual save via handleSaveThreePLConfig
     setThreePLConfig(configToUpdate);
   };
 
@@ -568,15 +567,13 @@ const AppContent: React.FC = () => {
       const hash = window.location.hash.replace('#', '');
       if (!currentUser) {
         if (currentPage !== 'login') {
-            setCurrentPage('login'); // Update state
-            if (hash !== 'login' && hash !== '') window.location.hash = 'login'; // Redirect if not already on login hash
+            setCurrentPage('login'); 
+            if (hash !== 'login' && hash !== '') window.location.hash = 'login'; 
         }
         setAppLoading(false); 
         return;
       }
       
-      // if (appLoading && hash !== 'login') return; // This might prevent initial navigation if appLoading is slow
-
       const allowedPages = userRolesConfig[currentUser.role] || [];
       const defaultPage = allowedPages[0] || 'dashboard';
 
@@ -594,14 +591,14 @@ const AppContent: React.FC = () => {
     window.addEventListener('hashchange', handleHashChange);
     handleHashChange(); 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser, appLoading, currentPage, toastContext]); // currentPage added
+  }, [currentUser, appLoading, currentPage, toastContext]);
 
 
   if (!currentUser) {
     return <LoginPage onLogin={handleLogin} isLoggingIn={isLoggingIn} />;
   }
   
-  if (appLoading) {
+  if (appLoading && currentPage !== 'login') { // Don't show global loader if user is on login page implicitly
     return (
       <div className="global-loading-overlay">
         <div className="spinner"></div>
@@ -635,7 +632,7 @@ const AppContent: React.FC = () => {
       content = <ReturnsManagementPage initialReturnRequests={returnRequests} onOpenReturnModal={handleOpenReturnModal} currentUser={currentUser} />;
       break;
     case 'platform-settings':
-      content = (platformConfigs && threePLConfig) ? ( // Check if configs are loaded
+      content = (platformConfigs && threePLConfig) ? ( 
           <PlatformSettingsPage
             currentUser={currentUser}
             platformConfigs={platformConfigs}
@@ -661,9 +658,9 @@ const AppContent: React.FC = () => {
     default:
       if(currentUser){
         const defaultUserPage = userRolesConfig[currentUser.role]?.[0] || 'dashboard';
-        if(currentPage !== defaultUserPage) { // Prevent infinite loop if defaultPage itself is somehow wrong
+        if(currentPage !== defaultUserPage) { 
             handleNavigation(defaultUserPage);
-        } else { // If already on default page but somehow in default switch case (should be rare)
+        } else { 
             content = <div className="main-content"><p>페이지를 로드할 수 없습니다. 기본 페이지로 이동합니다.</p></div>;
         }
         return null; 
