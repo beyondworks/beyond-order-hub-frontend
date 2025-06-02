@@ -1,6 +1,5 @@
 
-
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import * as api from './services/api'; // API service 임포트
 import { Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry, PlatformConfigField } from './types';
 import { ToastProvider, ToastContext } from './contexts/ToastContext';
@@ -34,7 +33,7 @@ const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const toastContext = useContext(ToastContext);
 
-  // Data states
+  // Data states - Initialize with empty arrays or null
   const [users, setUsers] = useState<User[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,6 +65,17 @@ const AppContent: React.FC = () => {
     user: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'errors'],
   };
 
+  // Centralized Auth Error Handler
+  const handleApiAuthError = useCallback((error: any): boolean => {
+    if (error.message && error.message.startsWith('AUTH_ERROR:')) {
+      toastContext?.addToast(error.message.replace('AUTH_ERROR: ', '') || '세션이 만료되었거나 인증 정보가 유효하지 않습니다. 다시 로그인해주세요.', 'error');
+      // handleLogout will clear currentUser, token, and all data states, then redirect.
+      handleLogoutRef.current(); // Use ref to call the latest version of handleLogout
+      return true; // Auth error was handled
+    }
+    return false; // Not an auth error, or no message
+  }, [toastContext]); // handleLogoutRef removed to avoid circular dependency if defined here, use ref instead
+
   const handleLogout = useCallback(() => {
     const userName = currentUser?.name;
     api.logout(); // Clear token from localStorage
@@ -81,10 +91,18 @@ const AppContent: React.FC = () => {
     setErrorLogs([]);
     setCurrentPage('login'); 
     window.location.hash = 'login';
-    if (userName) { // Only show logout message if a user was actually logged in
+    if (userName) { 
         toastContext?.addToast(`${userName}님이 로그아웃하였습니다.`, 'info');
     }
+    // Note: toast for auth error handled by handleApiAuthError or login failure
   }, [currentUser, toastContext]);
+
+  // Use a ref for handleLogout to ensure handleApiAuthError always calls the latest version
+  const handleLogoutRef = useRef(handleLogout);
+  useEffect(() => {
+    handleLogoutRef.current = handleLogout;
+  }, [handleLogout]);
+
 
   const loadInitialData = useCallback(async () => {
     if (!currentUser) {
@@ -116,47 +134,26 @@ const AppContent: React.FC = () => {
       setPlatformConfigs(fetchedPlatformConfigs || []);
       setThreePLConfig(fetchedThreePLConfigData || null);
       setErrorLogs(fetchedErrorLogs || []);
-
-      // Consider if any of these are truly "critical" for a success message.
-      // If any return null/empty due to non-AUTH error, it might still be a partial success.
       toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
-
     } catch (error: any) { 
       console.error("Failed to load initial data:", error);
-      if (error.message && error.message.startsWith('AUTH_ERROR:')) {
-        toastContext?.addToast(error.message.replace('AUTH_ERROR: ', ''), 'error');
-        handleLogout(); // Call centralized logout logic
-      } else {
+      if (!handleApiAuthError(error)) {
         toastContext?.addToast(error.message || '초기 데이터 로딩 중 오류가 발생했습니다.', 'error');
-        // Depending on severity, could also trigger a partial or full logout,
-        // or allow user to retry. For now, just show error.
       }
     } finally {
       setAppLoading(false);
     }
-  }, [currentUser, toastContext, handleLogout]); // handleLogout added as dependency
+  }, [currentUser, toastContext, handleApiAuthError]); 
   
   useEffect(() => {
     if (currentUser) {
         loadInitialData();
     } else {
-        // Attempt to auto-login or verify token might go here in a more complex app
-        // For now, if no currentUser, ensure app is not stuck in loading.
-        const token = localStorage.getItem('authToken'); // Check if a token exists
-        if (token) {
-            // If a token exists but no currentUser, it implies an app reload or
-            // a previous session. We should try to validate this token with a '/users/me' endpoint.
-            // Lacking that, if we try loadInitialData and it fails with AUTH_ERROR,
-            // the `loadInitialData`'s catch block will handle logout.
-            // This is a placeholder for a more robust auto-login check.
-            // For now, we'll assume login is explicit.
-            // If we assume a token means a valid session, we might try to set a dummy user to trigger load,
-            // but that's risky. It's better if login sets currentUser and then data loads.
-            // If there is a token, we could try to fetch a protected /me endpoint.
-            // If it fails with 401, then call handleLogout.
-        }
         setAppLoading(false); 
         const hash = window.location.hash.replace('#', '');
+        // If there's a token, an implicit attempt to load data will occur if currentUser was set.
+        // If that fails with AUTH_ERROR, handleApiAuthError via loadInitialData will trigger logout.
+        // Otherwise, if no currentUser and not on login, redirect to login.
         if (hash !== 'login' && hash !== '') {
             setCurrentPage('login'); 
             window.location.hash = 'login'; 
@@ -168,19 +165,21 @@ const AppContent: React.FC = () => {
   const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
     setIsLoggingIn(true);
     try {
-      const userFromApi = await api.login(username, passwordAttempt); // api.login now returns User directly
+      const userFromApi = await api.login(username, passwordAttempt); // api.login returns User object directly
       setCurrentUser(userFromApi); 
       const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
       handleNavigation(defaultPage); 
       toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '로그인 중 오류가 발생했습니다.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '로그인 중 오류가 발생했습니다.', 'error');
+      }
       return false;
     } finally {
       setIsLoggingIn(false);
     }
-  }, [toastContext]);
+  }, [toastContext, handleApiAuthError]);
 
 
   const handleNavigation = (page: string) => {
@@ -210,7 +209,9 @@ const AppContent: React.FC = () => {
         toastContext?.addToast(`주문 ID ${orderId}에 대한 상세 정보를 찾을 수 없습니다.`, 'error');
       }
     } catch (error: any) {
-      toastContext?.addToast(error.message || '주문 상세 정보 로딩 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '주문 상세 정보 로딩 중 오류 발생.', 'error');
+      }
     }
   };
   
@@ -235,7 +236,9 @@ const AppContent: React.FC = () => {
       toastContext?.addToast('송장 정보 저장 실패 (서버 응답 없음).', 'error');
       return false; 
     } catch (error: any) {
-      toastContext?.addToast(error.message || '송장 정보 저장 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '송장 정보 저장 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -266,7 +269,9 @@ const AppContent: React.FC = () => {
       handleCloseReturnModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || "반품/교환 정보 저장 중 오류 발생.", 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || "반품/교환 정보 저장 중 오류 발생.", 'error');
+      }
       return false;
     }
   };
@@ -293,8 +298,11 @@ const AppContent: React.FC = () => {
       }
       toastContext?.addToast(`수거 접수 실패: 서버에서 응답이 없습니다.`, 'error');
       return false;
-    } catch (error: any) {
-      toastContext?.addToast(error.message || "수거 접수 처리 중 오류 발생.", 'error');
+    } catch (error: any)
+     {
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || "수거 접수 처리 중 오류 발생.", 'error');
+      }
       return false;
     }
   };
@@ -316,7 +324,9 @@ const AppContent: React.FC = () => {
       handleCloseUserModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '사용자 추가 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '사용자 추가 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -329,7 +339,9 @@ const AppContent: React.FC = () => {
       handleCloseUserModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '사용자 정보 수정 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '사용자 정보 수정 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -343,7 +355,9 @@ const AppContent: React.FC = () => {
       );
       toastContext?.addToast(`${user?.name || userId} 사용자의 상태가 ${result.isActive ? '활성' : '비활성'}으로 변경되었습니다.`, 'info');
     } catch (error: any) {
-      toastContext?.addToast(error.message || '사용자 상태 변경 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '사용자 상태 변경 중 오류 발생.', 'error');
+      }
     }
   };
 
@@ -368,7 +382,9 @@ const AppContent: React.FC = () => {
       handleCloseProductModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '상품 추가 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '상품 추가 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -383,7 +399,9 @@ const AppContent: React.FC = () => {
       handleCloseProductModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '상품 정보 수정 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '상품 정보 수정 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -400,7 +418,9 @@ const AppContent: React.FC = () => {
             toastContext?.addToast('상품 상태 변경 실패: 서버 응답 없음.', 'error');
         }
     } catch (error: any) {
-        toastContext?.addToast(error.message || '상품 상태 변경 중 오류 발생.', 'error');
+        if (!handleApiAuthError(error)) {
+            toastContext?.addToast(error.message || '상품 상태 변경 중 오류 발생.', 'error');
+        }
     }
   };
 
@@ -426,7 +446,9 @@ const AppContent: React.FC = () => {
       handleCloseStockMovementModal();
       return true;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '재고 변동 기록 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '재고 변동 기록 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -467,7 +489,9 @@ const AppContent: React.FC = () => {
       toastContext?.addToast(`발송 처리 실패: 서버 응답 없음.`, 'error');
       return false;
     } catch (error: any) {
-      toastContext?.addToast(error.message || '발송 처리 중 오류 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '발송 처리 중 오류 발생.', 'error');
+      }
       return false;
     }
   };
@@ -490,7 +514,9 @@ const AppContent: React.FC = () => {
         setPlatformConfigs(prev => prev.map(p => p.id === platformId ? updatedConfig : p));
         toastContext?.addToast(`${updatedConfig.name} 연동이 ${updatedConfig.isActive ? '활성화' : '비활성화'}되었습니다.`, 'info');
     } catch (e: any) {
+      if (!handleApiAuthError(e)) {
         toastContext?.addToast(e.message || '플랫폼 활성 상태 변경 실패', 'error');
+      }
     }
   };
 
@@ -502,7 +528,9 @@ const AppContent: React.FC = () => {
         setPlatformConfigs(prev => prev.map(p => p.id === platformId ? savedConfig : p));
         toastContext?.addToast(`${savedConfig.name} 설정이 저장되었습니다.`, 'success');
     } catch (e: any) {
+      if (!handleApiAuthError(e)) {
         toastContext?.addToast(e.message || '플랫폼 설정 저장 실패', 'error');
+      }
     }
   };
 
@@ -515,7 +543,9 @@ const AppContent: React.FC = () => {
         setPlatformConfigs(prev => prev.map(p => p.id === platformId ? testedConfig : p));
         toastContext?.addToast(`${testedConfig.name} 연결 테스트 ${testedConfig.connectionStatus === 'connected' ? '성공 ✅' : '실패 ❌'}`, testedConfig.connectionStatus === 'connected' ? 'success' : 'error');
     } catch (e: any) {
+      if (!handleApiAuthError(e)) {
         toastContext?.addToast(e.message || '플랫폼 연결 테스트 실패', 'error');
+      }
     }
   };
 
@@ -532,7 +562,9 @@ const AppContent: React.FC = () => {
         setThreePLConfig(savedConfig);
         toastContext?.addToast('3PL 설정이 저장되었습니다.', 'success');
     } catch (e: any) {
+      if (!handleApiAuthError(e)) {
         toastContext?.addToast(e.message || '3PL 설정 저장 실패', 'error');
+      }
     }
   };
 
@@ -544,7 +576,9 @@ const AppContent: React.FC = () => {
         setThreePLConfig(testedConfig);
         toastContext?.addToast(`3PL 연결 테스트 ${testedConfig.connectionStatus === 'connected' ? '성공 ✅' : '실패 ❌'}`, testedConfig.connectionStatus === 'connected' ? 'success' : 'error');
     } catch (e: any) {
+      if (!handleApiAuthError(e)) {
         toastContext?.addToast(e.message || '3PL 연결 테스트 실패', 'error');
+      }
     }
   };
   
@@ -558,7 +592,9 @@ const AppContent: React.FC = () => {
          toastContext?.addToast(`오류 해결 처리 실패: 서버 응답 없음.`, 'error');
       }
     } catch (error: any) {
-      toastContext?.addToast(error.message || '오류 해결 처리 중 문제 발생.', 'error');
+      if (!handleApiAuthError(error)) {
+        toastContext?.addToast(error.message || '오류 해결 처리 중 문제 발생.', 'error');
+      }
     }
   };
 
@@ -598,7 +634,7 @@ const AppContent: React.FC = () => {
     return <LoginPage onLogin={handleLogin} isLoggingIn={isLoggingIn} />;
   }
   
-  if (appLoading && currentPage !== 'login') { // Don't show global loader if user is on login page implicitly
+  if (appLoading && currentPage !== 'login') { 
     return (
       <div className="global-loading-overlay">
         <div className="spinner"></div>
@@ -632,7 +668,7 @@ const AppContent: React.FC = () => {
       content = <ReturnsManagementPage initialReturnRequests={returnRequests} onOpenReturnModal={handleOpenReturnModal} currentUser={currentUser} />;
       break;
     case 'platform-settings':
-      content = (platformConfigs && threePLConfig) ? ( 
+      content = (platformConfigs.length > 0 && threePLConfig) ? ( // Check if platformConfigs is populated
           <PlatformSettingsPage
             currentUser={currentUser}
             platformConfigs={platformConfigs}
@@ -663,6 +699,7 @@ const AppContent: React.FC = () => {
         } else { 
             content = <div className="main-content"><p>페이지를 로드할 수 없습니다. 기본 페이지로 이동합니다.</p></div>;
         }
+        // Return null or a placeholder during navigation to avoid rendering default content briefly
         return null; 
       }
       content = <div className="main-content"><p>페이지를 찾을 수 없습니다.</p></div>;
