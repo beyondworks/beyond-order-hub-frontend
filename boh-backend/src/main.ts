@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { User } from './users/user.entity';
 import * as bcrypt from 'bcrypt';
+import * as cors from 'cors';
 
 async function createDefaultUsers(dataSource: DataSource) {
   const userRepository = dataSource.getRepository(User);
@@ -43,13 +44,11 @@ async function createDefaultUsers(dataSource: DataSource) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS 설정 (프론트엔드 개발자 참고)
-  app.enableCors({
+  // Express cors 패키지 직접 사용 (CORS 문제 완전 해결)
+  app.use(cors({
     origin: true,
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Authorization',
-  });
+  }));
 
   // Swagger 설정
   const config = new DocumentBuilder()
