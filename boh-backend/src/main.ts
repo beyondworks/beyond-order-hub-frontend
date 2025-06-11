@@ -43,32 +43,9 @@ async function createDefaultUsers(dataSource: DataSource) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS 헤더 강제 추가 (preflight 완벽 대응)
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
-    } else {
-      next();
-    }
-  });
-
   // CORS 설정 (프론트엔드 개발자 참고)
   app.enableCors({
-    origin: (origin, callback) => {
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'https://beyondworks.github.io'
-      ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'), false);
-      }
-    },
+    origin: true,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type,Authorization',
