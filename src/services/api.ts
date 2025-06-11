@@ -1,4 +1,3 @@
-
 import {
   Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry
 } from '../types';
@@ -29,6 +28,7 @@ async function makeApiRequest<T>(path: string, method: string = 'GET', body?: an
     method,
     headers: getAuthHeaders(isJsonContent),
     body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+    credentials: 'include',
   });
 
   if (response.status === 401) {
