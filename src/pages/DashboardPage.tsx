@@ -24,6 +24,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
   const availablePlatforms = ['전체', '스마트스토어', '쿠팡', '오늘의집', '29CM', '아임웹', '카카오톡스토어', '토스쇼핑'];
   const availableStatuses = ['전체', '신규', '처리중', '3PL대기', '3PL완료', '출고대기', '발송완료', '취소'];
 
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeProducts = Array.isArray(products) ? products : [];
+
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
@@ -34,7 +37,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
   };
 
   const applyDashboardFiltersAndSearch = useCallback(() => {
-    let filtered = orders; 
+    let filtered = safeOrders;
 
     if (filters.platform !== '전체') {
       filtered = filtered.filter(order => order.platform === filters.platform);
@@ -55,14 +58,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
       );
     }
     setDisplayedRecentOrders(filtered);
-  }, [filters, searchTerm, orders]);
+  }, [filters, searchTerm, safeOrders]);
 
   useEffect(() => {
     applyDashboardFiltersAndSearch();
   }, [filters, searchTerm, orders, applyDashboardFiltersAndSearch]);
   
   useEffect(() => { 
-    setDisplayedRecentOrders(orders);
+    setDisplayedRecentOrders(safeOrders);
     applyDashboardFiltersAndSearch(); 
   }, [orders, applyDashboardFiltersAndSearch]);
 
@@ -71,7 +74,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
     setSearchTerm('');
   };
 
-  const lowStockProducts = products
+  const lowStockProducts = safeProducts
     .filter(p => p.safeStockQuantity !== undefined && p.safeStockQuantity > 0 && p.stockQuantity <= p.safeStockQuantity)
     .slice(0, 5); // 최대 5개 표시
 
@@ -105,7 +108,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
               </div>
               <button type="button" className="action-button secondary" onClick={resetFilters}><RefreshIcon />초기화</button>
             </div>
-            <OrdersTable orders={displayedRecentOrders} onViewDetails={onViewDetails} isCompact={true}/>
+            <OrdersTable orders={Array.isArray(displayedRecentOrders) ? displayedRecentOrders : []} onViewDetails={onViewDetails} isCompact={true}/>
           </section>
         </div>
         
@@ -114,7 +117,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ orders, products, onViewD
              <AlertTriangleIcon />
             <h3 id="low-stock-title" style={{ marginLeft: '8px', fontSize: '1.2em', color: '#c0392b', marginBottom: '0'}}>재고 부족 알림</h3>
           </div>
-          {lowStockProducts.length > 0 ? (
+          {Array.isArray(lowStockProducts) && lowStockProducts.length > 0 ? (
             <ul className="low-stock-list">
               {lowStockProducts.map(p => (
                 <li key={p.id}>

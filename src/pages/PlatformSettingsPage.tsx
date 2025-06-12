@@ -44,6 +44,9 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
   const threePLStatusInfo = getPlatformStatusInfo(threePLConfig.connectionStatus);
   const isMasterUser = currentUser?.role === 'master';
 
+  const safePlatformConfigs = Array.isArray(platformConfigs) ? platformConfigs : [];
+  const safeThreePLConfig = threePLConfig && typeof threePLConfig === 'object' ? threePLConfig : { apiUrl: '', apiKey: '', connectionStatus: 'not_configured', lastTest: '' };
+
   return (
     <main className="main-content settings-page" role="main" aria-labelledby="settings-title-h2">
       <h2 id="settings-title-h2">연동 및 계정 설정</h2>
@@ -61,7 +64,7 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
         <div id="platform-settings-panel" role="tabpanel" aria-labelledby="platform-tab">
           <p className="settings-description">각 쇼핑몰 플랫폼과의 연동을 설정합니다. API 키를 입력하고, 자동 주문 수집을 활성화하세요.</p>
           <div className="platform-cards-container">
-            {platformConfigs.map((config) => {
+            {safePlatformConfigs.map((config) => {
               const statusInfo = getPlatformStatusInfo(config.connectionStatus);
               const isSaving = loadingStates[`save-${config.id}`];
               const isTesting = loadingStates[`test-${config.id}`];
@@ -76,14 +79,14 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                     <span className={`connection-status-badge ${statusInfo.className}`}> {statusInfo.text} </span>
                   </header>
                   <form className="api-settings-form" onSubmit={(e) => {e.preventDefault(); handleAction(() => onSavePlatformConfig(config.id), `save-${config.id}`);}}>
-                    {config.fields.map((field) => (
+                    {Array.isArray(config.fields) ? config.fields.map((field) => (
                       <div className="form-group" key={field.id}>
                         <label htmlFor={`${config.id}-${field.id}`}>{field.label}:</label>
                         <input type={field.type} id={`${config.id}-${field.id}`} value={field.value}
                           onChange={(e) => onUpdatePlatformConfig(config.id, field.id, e.target.value)}
                           placeholder={`${field.label} 입력`} disabled={isBusy} />
                       </div>
-                    ))}
+                    )) : null}
                     <div className="form-group toggle-group">
                       <label htmlFor={`${config.id}-enable-sync`}>자동 주문 수집:</label>
                       <button type="button" id={`${config.id}-enable-sync`} onClick={() => handleAction(() => onTogglePlatformActive(config.id), `toggle-${config.id}`)}
@@ -120,17 +123,17 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                 <form className="api-settings-form" onSubmit={(e) => {e.preventDefault(); handleAction(onSaveThreePLConfig, 'save-3pl');}}>
                     <div className="form-group">
                         <label htmlFor="3pl-api-url">3PL API URL:</label>
-                        <input type="text" id="3pl-api-url" value={threePLConfig.apiUrl}
+                        <input type="text" id="3pl-api-url" value={safeThreePLConfig.apiUrl}
                           onChange={(e) => onUpdateThreePLConfig('apiUrl', e.target.value)}
                           placeholder="예: https://api.my3pl.com/v1" disabled={loadingStates['save-3pl'] || loadingStates['test-3pl']} />
                     </div>
                     <div className="form-group">
                         <label htmlFor="3pl-api-key">3PL API Key (또는 인증정보):</label>
-                        <input type="password" id="3pl-api-key" value={threePLConfig.apiKey}
+                        <input type="password" id="3pl-api-key" value={safeThreePLConfig.apiKey}
                           onChange={(e) => onUpdateThreePLConfig('apiKey', e.target.value)}
                           placeholder="API Key 입력" disabled={loadingStates['save-3pl'] || loadingStates['test-3pl']} />
                     </div>
-                    <p className="last-sync-info">최근 테스트: {threePLConfig.lastTest}</p>
+                    <p className="last-sync-info">최근 테스트: {safeThreePLConfig.lastTest}</p>
                     <div className="form-actions">
                         <button type="submit" className="action-button primary" disabled={loadingStates['save-3pl'] || loadingStates['test-3pl']}>
                             <SaveIcon /> {loadingStates['save-3pl'] ? '저장 중...' : '저장'}

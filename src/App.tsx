@@ -645,9 +645,12 @@ const AppContent: React.FC = () => {
     );
   }
 
-  const recentOrdersForDashboard = allOrders
-    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
-    .slice(0, 5);
+  const safePlatformConfigs = Array.isArray(platformConfigs) ? platformConfigs : [];
+  const safeThreePLConfig = threePLConfig && typeof threePLConfig === 'object' ? threePLConfig : { apiUrl: '', apiKey: '', connectionStatus: 'not_configured' as 'not_configured', lastTest: '' };
+
+  const recentOrdersForDashboard = Array.isArray(allOrders)
+    ? allOrders.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()).slice(0, 5)
+    : [];
 
   let content;
   switch (currentPage) {
@@ -670,11 +673,11 @@ const AppContent: React.FC = () => {
       content = <ReturnsManagementPage initialReturnRequests={returnRequests} onOpenReturnModal={handleOpenReturnModal} currentUser={currentUser} />;
       break;
     case 'platform-settings':
-      content = (platformConfigs.length > 0 && threePLConfig) ? ( // Check if platformConfigs is populated
+      content = (safePlatformConfigs.length > 0 && safeThreePLConfig) ? (
           <PlatformSettingsPage
             currentUser={currentUser}
-            platformConfigs={platformConfigs}
-            threePLConfig={threePLConfig}
+            platformConfigs={safePlatformConfigs}
+            threePLConfig={safeThreePLConfig}
             users={users}
             onUpdatePlatformConfig={handleUpdatePlatformConfigField}
             onTogglePlatformActive={handleTogglePlatformActive}
