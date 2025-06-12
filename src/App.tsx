@@ -130,7 +130,13 @@ const AppContent: React.FC = () => {
       setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
       setStockMovements(Array.isArray(fetchedStockMovements) ? fetchedStockMovements : []);
       setReturnRequests(Array.isArray(fetchedReturnRequests) ? fetchedReturnRequests : []);
-      setPlatformConfigs(Array.isArray(fetchedPlatformConfigs) ? fetchedPlatformConfigs : []);
+      setPlatformConfigs(Array.isArray(fetchedPlatformConfigs) ? fetchedPlatformConfigs.map(cfg => ({
+        ...cfg,
+        fields: Array.isArray(cfg.fields) ? cfg.fields : [],
+        logoPlaceholder: typeof cfg.logoPlaceholder === 'string' ? cfg.logoPlaceholder : '',
+        connectionStatus: typeof cfg.connectionStatus === 'string' ? cfg.connectionStatus : 'not_configured',
+        lastSync: typeof cfg.lastSync === 'string' ? cfg.lastSync : '',
+      })) : []);
       setThreePLConfig(fetchedThreePLConfigData && typeof fetchedThreePLConfigData === 'object' ? fetchedThreePLConfigData : null);
       setErrorLogs(Array.isArray(fetchedErrorLogs) ? fetchedErrorLogs : []);
       toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
@@ -348,14 +354,6 @@ const AppContent: React.FC = () => {
       setUsers((prevUsers: User[]) =>
         prevUsers.map((u: User) => (u.id === userId ? { ...u, isActive: result.isActive } : u))
       );
-      setAllOrders((prevOrders: Order[]) =>
-        prevOrders.map((o: Order) => (o.id === result.order.id ? result.order : o))
-      );
-      setProducts((prevProds: Product[]) =>
-        prevProds.map((p: Product) => (productUpdates.has(p.id) ? {...p, stockQuantity: productUpdates.get(p.id)!} : p))
-      );
-      setStockMovements((prevMoves: StockMovement[]) => [...result.newMovements, ...prevMoves].sort((a: StockMovement, b: StockMovement) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
-      setPlatformConfigs((prev: PlatformConfig[]) => prev.map((p: PlatformConfig) => p.id === platformId ? configToSave : p));
       toastContext?.addToast(`${user?.name || userId} 사용자의 상태가 ${result.isActive ? '활성' : '비활성'}으로 변경되었습니다.`, 'info');
     } catch (error: any) {
       if (!handleApiAuthError(error)) {
