@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import * as api from './services/api'; // API service 임포트
 import { Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry, PlatformConfigField } from './types';
@@ -126,14 +125,14 @@ const AppContent: React.FC = () => {
         api.fetchErrorLogs(),
       ]);
       
-      setUsers(fetchedUsers || []);
-      setAllOrders(fetchedOrders || []);
-      setProducts(fetchedProducts || []);
-      setStockMovements(fetchedStockMovements || []);
-      setReturnRequests(fetchedReturnRequests || []);
-      setPlatformConfigs(fetchedPlatformConfigs || []);
-      setThreePLConfig(fetchedThreePLConfigData || null);
-      setErrorLogs(fetchedErrorLogs || []);
+      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
+      setAllOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
+      setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
+      setStockMovements(Array.isArray(fetchedStockMovements) ? fetchedStockMovements : []);
+      setReturnRequests(Array.isArray(fetchedReturnRequests) ? fetchedReturnRequests : []);
+      setPlatformConfigs(Array.isArray(fetchedPlatformConfigs) ? fetchedPlatformConfigs : []);
+      setThreePLConfig(fetchedThreePLConfigData && typeof fetchedThreePLConfigData === 'object' ? fetchedThreePLConfigData : null);
+      setErrorLogs(Array.isArray(fetchedErrorLogs) ? fetchedErrorLogs : []);
       toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
     } catch (error: any) { 
       console.error("Failed to load initial data:", error);
@@ -225,7 +224,7 @@ const AppContent: React.FC = () => {
       const updatedDetail = await api.saveOrderFulfillment(orderId, shippingCarrier, trackingNumber);
       if (updatedDetail) {
         setSelectedOrderForModal(updatedDetail); 
-        setAllOrders(prev => prev.map(o => o.id === orderId ? 
+        setAllOrders((prev: Order[]) => prev.map((o: Order) => o.id === orderId ? 
             {...o, 
              status: updatedDetail.status, 
              shippingInfo: {carrier: shippingCarrier, trackingNumber, shippingDate: new Date().toISOString()}} 
@@ -255,16 +254,14 @@ const AppContent: React.FC = () => {
   const handleSaveReturnRequest = async (updatedReturnRequest: ReturnRequest): Promise<boolean> => {
     try {
       const savedRequest = await api.saveReturnRequest(updatedReturnRequest);
-      setReturnRequests(prevRequests =>
-        prevRequests.map(req => req.id === savedRequest.id ? savedRequest : req)
-      );
-      setAllOrders(prevOrders => 
-        prevOrders.map(order =>
+      setReturnRequests((prevRequests: ReturnRequest[]) =>
+        prevRequests.map((req: ReturnRequest) => req.id === savedRequest.id ? savedRequest : req));
+      setAllOrders((prevOrders: Order[]) => 
+        prevOrders.map((order: Order) =>
           order.id === savedRequest.orderId
             ? { ...order, hasReturnOrExchange: true, returnStatus: savedRequest.status }
             : order
-        )
-      );
+        ));
       toastContext?.addToast("반품/교환 정보가 저장되었습니다.", 'success');
       handleCloseReturnModal();
       return true;
@@ -280,17 +277,15 @@ const AppContent: React.FC = () => {
     try {
       const updatedRequest = await api.requestReturnPickup(returnRequestId);
       if (updatedRequest) {
-        setReturnRequests(prevRequests =>
-          prevRequests.map(req => (req.id === updatedRequest.id ? updatedRequest : req))
-        );
+        setReturnRequests((prevRequests: ReturnRequest[]) =>
+          prevRequests.map((req: ReturnRequest) => (req.id === updatedRequest.id ? updatedRequest : req)));
         if (updatedRequest.orderId) { 
-            setAllOrders(prevOrders =>
-              prevOrders.map(order =>
+            setAllOrders((prevOrders: Order[]) =>
+              prevOrders.map((order: Order) =>
                 order.id === updatedRequest.orderId
                   ? { ...order, hasReturnOrExchange: true, returnStatus: updatedRequest.status }
                   : order
-              )
-            );
+              ));
         }
         setSelectedReturnForModal(updatedRequest); 
         toastContext?.addToast(`반품 ID ${returnRequestId} 수거 접수가 요청되었습니다.`, 'info');
@@ -319,7 +314,7 @@ const AppContent: React.FC = () => {
   const handleAddUser = async (newUserPayload: Omit<User, 'id' | 'createdAt' | 'isActive'>, password?: string): Promise<boolean> => {
     try {
       const addedUser = await api.addUser(newUserPayload, password);
-      setUsers(prevUsers => [...prevUsers, addedUser]);
+      setUsers((prevUsers: User[]) => [...prevUsers, addedUser]);
       toastContext?.addToast('새로운 사용자가 추가되었습니다.', 'success');
       handleCloseUserModal();
       return true;
@@ -334,7 +329,7 @@ const AppContent: React.FC = () => {
   const handleUpdateUser = async (updatedUser: User): Promise<boolean> => {
     try {
       const savedUser = await api.updateUser(updatedUser);
-      setUsers(prevUsers => prevUsers.map(u => u.id === savedUser.id ? savedUser : u));
+      setUsers((prevUsers: User[]) => prevUsers.map((u: User) => u.id === savedUser.id ? savedUser : u));
       toastContext?.addToast('사용자 정보가 수정되었습니다.', 'success');
       handleCloseUserModal();
       return true;
@@ -350,9 +345,17 @@ const AppContent: React.FC = () => {
     try {
       const result = await api.toggleUserActive(userId);
       const user = users.find(u => u.id === userId);
-      setUsers(prevUsers =>
-        prevUsers.map(u => (u.id === userId ? { ...u, isActive: result.isActive } : u))
+      setUsers((prevUsers: User[]) =>
+        prevUsers.map((u: User) => (u.id === userId ? { ...u, isActive: result.isActive } : u))
       );
+      setAllOrders((prevOrders: Order[]) =>
+        prevOrders.map((o: Order) => (o.id === result.order.id ? result.order : o))
+      );
+      setProducts((prevProds: Product[]) =>
+        prevProds.map((p: Product) => (productUpdates.has(p.id) ? {...p, stockQuantity: productUpdates.get(p.id)!} : p))
+      );
+      setStockMovements((prevMoves: StockMovement[]) => [...result.newMovements, ...prevMoves].sort((a: StockMovement, b: StockMovement) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
+      setPlatformConfigs((prev: PlatformConfig[]) => prev.map((p: PlatformConfig) => p.id === platformId ? configToSave : p));
       toastContext?.addToast(`${user?.name || userId} 사용자의 상태가 ${result.isActive ? '활성' : '비활성'}으로 변경되었습니다.`, 'info');
     } catch (error: any) {
       if (!handleApiAuthError(error)) {
@@ -373,7 +376,7 @@ const AppContent: React.FC = () => {
   const handleAddProduct = async (newProductData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> => {
     try {
       const addedProduct = await api.addProduct(newProductData);
-      setProducts(prevProducts => [...prevProducts, addedProduct]);
+      setProducts((prevProducts: Product[]) => [...prevProducts, addedProduct]);
       if (addedProduct.stockQuantity > 0) {
           const fetchedStockMovements = await api.fetchStockMovements(); 
           setStockMovements(fetchedStockMovements);
@@ -392,8 +395,8 @@ const AppContent: React.FC = () => {
   const handleUpdateProduct = async (updatedProductData: Product): Promise<boolean> => {
     try {
       const savedProduct = await api.updateProduct(updatedProductData);
-      setProducts(prevProducts =>
-        prevProducts.map(p => (p.id === savedProduct.id ? savedProduct : p))
+      setProducts((prevProducts: Product[]) =>
+        prevProducts.map((p: Product) => (p.id === savedProduct.id ? savedProduct : p))
       );
       toastContext?.addToast('상품 정보가 수정되었습니다.', 'success');
       handleCloseProductModal();
@@ -410,8 +413,8 @@ const AppContent: React.FC = () => {
      try {
         const updatedProduct = await api.toggleProductStatus(productId, newStatus);
         if (updatedProduct) {
-            setProducts(prevProducts =>
-                prevProducts.map(p => (p.id === updatedProduct.id ? updatedProduct : p))
+            setProducts((prevProducts: Product[]) =>
+                prevProducts.map((p: Product) => (p.id === updatedProduct.id ? updatedProduct : p))
             );
             toastContext?.addToast(`${updatedProduct.name} 상품의 상태가 ${newStatus}(으)로 변경되었습니다.`, 'info');
         } else {
@@ -430,11 +433,11 @@ const AppContent: React.FC = () => {
   const handleAddStockMovement = async (newMovementData: Omit<StockMovement, 'id' | 'currentStockAfterMovement'>): Promise<boolean> => {
     try {
       const addedMovement = await api.addStockMovement(newMovementData);
-      setStockMovements(prevMovements => [addedMovement, ...prevMovements].sort((a,b) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
+      setStockMovements((prevMovements: StockMovement[]) => [addedMovement, ...prevMovements].sort((a: StockMovement, b: StockMovement) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
       
       if (addedMovement.productId && addedMovement.currentStockAfterMovement !== undefined) {
-        setProducts(prevProducts =>
-          prevProducts.map(p =>
+        setProducts((prevProducts: Product[]) =>
+          prevProducts.map((p: Product) =>
             p.id === addedMovement.productId ? { ...p, stockQuantity: addedMovement.currentStockAfterMovement!, updatedAt: new Date().toISOString() } : p
           )
         );
@@ -476,11 +479,12 @@ const AppContent: React.FC = () => {
                 productUpdates.set(sm.productId, sm.currentStockAfterMovement);
             }
         });
-        setProducts(prevProds => prevProds.map(p => 
+        setProducts((prevProds: Product[]) =>
+          prevProds.map((p: Product) =>
             productUpdates.has(p.id) ? {...p, stockQuantity: productUpdates.get(p.id)!} : p
         ));
 
-        setStockMovements(prevMoves => [...result.newMovements, ...prevMoves].sort((a,b) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
+        setStockMovements((prevMoves: StockMovement[]) => [...result.newMovements, ...prevMoves].sort((a: StockMovement, b: StockMovement) => new Date(b.movementDate).getTime() - new Date(a.movementDate).getTime()));
         
         toastContext?.addToast(`주문 ${orderId}이(가) 발송 처리되었습니다.`, 'success');
         handleCloseShippingModal();
