@@ -1,5 +1,6 @@
 import React, { useEffect, useContext } from 'react';
-import { ToastMessage, ToastContext } from '../../../contexts/ToastContext';
+import { ToastContext } from '../../../contexts/ToastContext';
+import { ToastMessage } from '../../../types';
 import { CloseIcon, SuccessIcon, ErrorIcon, InfoIcon, WarningIcon } from '../../../assets/icons'; // 아이콘 임포트
 
 interface ToastProps {

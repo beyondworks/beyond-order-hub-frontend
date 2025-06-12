@@ -26,11 +26,11 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, onViewDetails, isComp
           </tr>
         </thead>
         <tbody>
-          {orders.length === 0 ? (
+          {Array.isArray(orders) && orders.length === 0 ? (
             <tr>
               <td colSpan={isCompact ? 8 : 9} style={{ textAlign: 'center' }}>주문이 없습니다.</td>
             </tr>
-          ) : (
+          ) : Array.isArray(orders) ? (
             orders.map(order => (
               <tr key={order.id}>
                 <td>{order.dateTime}</td>
@@ -52,7 +52,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders, onViewDetails, isComp
                 </td>
               </tr>
             ))
-          )}
+          ) : null}
         </tbody>
       </table>
     </div>

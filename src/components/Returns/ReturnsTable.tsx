@@ -25,7 +25,7 @@ const getReturnStatusClassName = (status: string) => {
 
 interface ReturnsTableProps {
   requests: ReturnRequest[];
-  onOpenDetails: (request: ReturnRequest) => void;
+  onOpenDetails: (id: string) => void;
 }
 
 const ReturnsTable: React.FC<ReturnsTableProps> = ({ requests, onOpenDetails }) => {
@@ -47,12 +47,12 @@ const ReturnsTable: React.FC<ReturnsTableProps> = ({ requests, onOpenDetails }) 
           </tr>
         </thead>
         <tbody>
-          {requests.length === 0 ? (
+          {Array.isArray(requests) && requests.length === 0 ? (
             <tr>
               <td colSpan={10} style={{ textAlign: 'center' }}>반품/교환 요청이 없습니다.</td>
             </tr>
           ) : (
-            requests.map(req => (
+            Array.isArray(requests) ? requests.map(req => (
               <tr key={req.id}>
                 <td>{req.id}</td>
                 <td>{req.orderId} ( {req.platformOrderId} )</td>
@@ -66,14 +66,14 @@ const ReturnsTable: React.FC<ReturnsTableProps> = ({ requests, onOpenDetails }) 
                 <td>
                   <button
                     className="action-button"
-                    onClick={() => onOpenDetails(req)}
+                    onClick={() => onOpenDetails(req.id)}
                     aria-label={`View details for return request ${req.id}`}
                   >
                     상세보기
                   </button>
                 </td>
               </tr>
-            ))
+            )) : null
           )}
         </tbody>
       </table>

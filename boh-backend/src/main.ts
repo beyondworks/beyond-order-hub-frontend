@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 
 async function createDefaultUsers(dataSource: DataSource) {
   const userRepository = dataSource.getRepository(User);
+
   const usersToCreate = [
     {
       username: 'master@example.com',
@@ -42,12 +43,14 @@ async function createDefaultUsers(dataSource: DataSource) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for frontend domains
+  // CORS 설정 (프론트엔드 개발자 참고)
   app.enableCors({
-    origin: '*',
-    credentials: true,
+    origin: [
+      'https://beyondworks.github.io', // GitHub Pages 프론트엔드
+    ],
+    credentials: true, // 인증정보(쿠키 등) 허용
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization',
+    allowedHeaders: 'Content-Type,Authorization',
   });
 
   // Swagger 설정
@@ -64,9 +67,6 @@ async function bootstrap() {
   const dataSource = app.get(DataSource);
   await createDefaultUsers(dataSource);
 
-  const port = process.env.PORT || 4000;
-  await app.listen(port);
-  console.log(`🚀 Server listening on port ${port}`);
+  await app.listen(process.env.PORT || 4000);
 }
-
 bootstrap();

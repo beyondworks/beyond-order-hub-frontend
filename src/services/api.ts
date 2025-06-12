@@ -1,3 +1,4 @@
+
 import {
   Order, OrderDetail, PlatformConfig, ThreePLConfig, User, ReturnRequest, Product, StockMovement, ErrorLogEntry
 } from '../types';
@@ -28,11 +29,7 @@ async function makeApiRequest<T>(path: string, method: string = 'GET', body?: an
     method,
     headers: getAuthHeaders(isJsonContent),
     body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-    mode: 'cors',
-    cache: 'no-cache',
-    credentials: 'include',
   });
-  console.debug(`API Request: ${method} ${path} -> Status ${response.status}`);
 
   if (response.status === 401) {
     localStorage.removeItem('authToken'); // Clear token on 401

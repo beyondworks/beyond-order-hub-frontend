@@ -45,12 +45,12 @@ const StockMovementTable: React.FC<StockMovementTableProps> = ({ movements }) =>
           </tr>
         </thead>
         <tbody>
-          {movements.length === 0 ? (
+          {Array.isArray(movements) && movements.length === 0 ? (
             <tr>
               <td colSpan={8} style={{ textAlign: 'center' }}>입/출고 내역이 없습니다.</td>
             </tr>
           ) : (
-            movements.map(move => (
+            Array.isArray(movements) ? movements.map(move => (
               <tr key={move.id}>
                 <td>{formatDate(move.movementDate)}</td>
                 <td>{move.productCode}</td>
@@ -81,7 +81,7 @@ const StockMovementTable: React.FC<StockMovementTableProps> = ({ movements }) =>
                   </td>
                 )} */}
               </tr>
-            ))
+            )) : null
           )}
         </tbody>
       </table>

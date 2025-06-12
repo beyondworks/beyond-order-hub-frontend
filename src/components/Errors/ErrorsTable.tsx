@@ -5,11 +5,11 @@ import { SparklesIcon } from '../../assets/icons';
 
 interface ErrorsTableProps {
     errors: ErrorLogEntry[];
-    onResolveError: (errorId: string) => void;
-    onAnalyzeError: (errorEntry: ErrorLogEntry) => void;
+    onResolveError: (id: string) => void;
+    onAnalyzeError: (id: string) => void;
 }
 
-const ErrorsTable: React.FC<ErrorsTableProps> = ({ errors, onResolveError, onAnalyzeError }) => {
+const ErrorsTable: React.FC<ErrorsTableProps> = ({ errors, onResolveError, onAnalyzeError, ...props }) => {
     return (
         <div className="orders-table-container"> {/* Reusing orders-table-container for consistent styling */}
             <table className="errors-table orders-table" aria-label="Error Logs"> {/* Reusing orders-table for base styles */}
@@ -29,7 +29,7 @@ const ErrorsTable: React.FC<ErrorsTableProps> = ({ errors, onResolveError, onAna
                             <td colSpan={6} style={{ textAlign: 'center' }}>오류 내역이 없습니다.</td>
                         </tr>
                     ) : (
-                        errors.map(err => (
+                        Array.isArray(errors) ? errors.map(err => (
                             <tr key={err.id}>
                                 <td>{err.timestamp}</td>
                                 <td><span className={getErrorLevelClassName(err.level)}>{err.level.toUpperCase()}</span></td>
@@ -38,7 +38,7 @@ const ErrorsTable: React.FC<ErrorsTableProps> = ({ errors, onResolveError, onAna
                                 <td><span className={err.status === '미해결' ? 'status-cancelled' : (err.status === '재시도 중' ? 'status-processing' : 'status-shipped') }>{err.status}</span></td>
                                 <td>
                                     <button 
-                                        onClick={() => onAnalyzeError(err)} 
+                                        onClick={() => onAnalyzeError(err.id)} 
                                         className="action-button" 
                                         style={{marginRight: '5px'}}
                                         aria-label={`Get AI analysis for error ${err.id}`}
@@ -59,7 +59,7 @@ const ErrorsTable: React.FC<ErrorsTableProps> = ({ errors, onResolveError, onAna
                                     {/* <button className="action-button" aria-label={`Details for error ${err.id}`}>상세</button> */}
                                 </td>
                             </tr>
-                        ))
+                        )) : null
                     )}
                 </tbody>
             </table>

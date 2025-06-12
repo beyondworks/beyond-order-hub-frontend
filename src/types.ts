@@ -196,3 +196,9 @@ export interface StockMovement {
   memo?: string; // 추가 메모
   currentStockAfterMovement?: number; // 이 변동 후 상품의 총 재고 (선택적, 계산 편의성)
 }
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}

@@ -159,14 +159,14 @@ const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({
 
           <section className="modal-section">
             <h4>대상 상품</h4>
-            <table className="modal-products-table">
-              <thead><tr><th>상품명</th><th>옵션</th><th>수량</th></tr></thead>
-              <tbody>
-                {editableRequest.items.map((item, index) => (
-                  <tr key={`${item.productId}-${index}`}><td>{item.productName}</td><td>{item.option}</td><td>{item.quantity}</td></tr>
-                ))}
-              </tbody>
-            </table>
+            {editableRequest && Array.isArray(editableRequest.items) ? editableRequest.items.map((item, index) => (
+              <table className="modal-products-table" key={`${item.productId}-${index}`}>
+                <thead><tr><th>상품명</th><th>옵션</th><th>수량</th></tr></thead>
+                <tbody>
+                  <tr><td>{item.productName}</td><td>{item.option}</td><td>{item.quantity}</td></tr>
+                </tbody>
+              </table>
+            )) : null}
           </section>
 
           {/* 반품 배송 정보, 교환 재배송 정보, 관리자 메모 섹션 (handleChange, disabled 속성 추가) */}

@@ -4,8 +4,8 @@ import { ToggleOnIcon, ToggleOffIcon } from '../../assets/icons';
 
 interface UsersTableProps {
   users: User[];
-  onEditUser: (user: User) => void;
-  onToggleActive: (userId: string) => void;
+  onEditUser: (id: string) => void;
+  onToggleActive: (id: string) => void;
 }
 
 const UsersTable: React.FC<UsersTableProps> = ({ users, onEditUser, onToggleActive }) => {
@@ -36,11 +36,11 @@ const UsersTable: React.FC<UsersTableProps> = ({ users, onEditUser, onToggleActi
           </tr>
         </thead>
         <tbody>
-          {users.length === 0 ? (
+          {Array.isArray(users) && users.length === 0 ? (
             <tr>
               <td colSpan={6} style={{ textAlign: 'center' }}>등록된 사용자가 없습니다.</td>
             </tr>
-          ) : (
+          ) : Array.isArray(users) ? (
             users.map(user => (
               <tr key={user.id}>
                 <td>{user.name}</td>
@@ -54,7 +54,7 @@ const UsersTable: React.FC<UsersTableProps> = ({ users, onEditUser, onToggleActi
                 <td>{formatDate(user.createdAt)}</td>
                 <td>
                   <button
-                    onClick={() => onEditUser(user)}
+                    onClick={() => onEditUser(user.id)}
                     className="action-button"
                     style={{ marginRight: '5px' }}
                     aria-label={`Edit user ${user.name}`}
@@ -73,7 +73,7 @@ const UsersTable: React.FC<UsersTableProps> = ({ users, onEditUser, onToggleActi
                 </td>
               </tr>
             ))
-          )}
+          ) : null}
         </tbody>
       </table>
     </div>

@@ -14,7 +14,7 @@ const getProductStatusClassName = (status: Product['status']) => {
 
 interface ProductsTableProps {
   products: Product[];
-  onEditProduct?: (product: Product) => void; // 마스터 사용자만 수정 가능하므로 optional
+  onEditProduct: (id: string) => void;
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEditProduct }) => {
@@ -39,16 +39,16 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEditProduct }
             <th>재고</th>
             <th>판매상태</th>
             <th>등록일</th>
-            {onEditProduct && <th>관리</th>}
+            <th>관리</th>
           </tr>
         </thead>
         <tbody>
-          {products.length === 0 ? (
+          {Array.isArray(products) && products.length === 0 ? (
             <tr>
-              <td colSpan={onEditProduct ? 8 : 7} style={{ textAlign: 'center' }}>등록된 상품이 없습니다.</td>
+              <td colSpan={8} style={{ textAlign: 'center' }}>등록된 상품이 없습니다.</td>
             </tr>
           ) : (
-            products.map(prod => (
+            Array.isArray(products) ? products.map(prod => (
               <tr key={prod.id}>
                 <td>{prod.productCode}</td>
                 <td>
@@ -74,19 +74,17 @@ const ProductsTable: React.FC<ProductsTableProps> = ({ products, onEditProduct }
                   </span>
                 </td>
                 <td>{formatDate(prod.createdAt)}</td>
-                {onEditProduct && (
-                  <td>
-                    <button
-                      className="action-button"
-                      onClick={() => onEditProduct(prod)}
-                      aria-label={`Edit product ${prod.name}`}
-                    >
-                      수정
-                    </button>
-                  </td>
-                )}
+                <td>
+                  <button
+                    className="action-button"
+                    onClick={() => onEditProduct(prod.id)}
+                    aria-label={`Edit product ${prod.name}`}
+                  >
+                    수정
+                  </button>
+                </td>
               </tr>
-            ))
+            )) : null
           )}
         </tbody>
       </table>

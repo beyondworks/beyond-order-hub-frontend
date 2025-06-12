@@ -100,12 +100,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                 <tr><th>상품명</th><th>옵션</th><th>수량</th><th>단가</th><th>합계</th></tr>
               </thead>
               <tbody>
-                {order.products.map(p => (
+                {order && Array.isArray(order.products) ? order.products.map(p => (
                   <tr key={p.id}>
                     <td>{p.name}</td><td>{p.option}</td><td>{p.quantity}</td>
                     <td>{p.unitPrice.toLocaleString()}원</td><td>{p.subtotal.toLocaleString()}원</td>
                   </tr>
-                ))}
+                )) : null}
               </tbody>
               <tfoot>
                 <tr><td colSpan={4} style={{ textAlign: 'right' }}><strong>총 결제 금액:</strong></td><td><strong>{order.totalAmount.toLocaleString()}원</strong></td></tr>
@@ -124,7 +124,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                 disabled={isSaving}
               >
                 <option value="">택배사 선택</option>
-                {order.fulfillment.shippingCarriersAvailable.map(c => <option key={c} value={c}>{c}</option>)}
+                {order && order.fulfillment && Array.isArray(order.fulfillment.shippingCarriersAvailable) ? order.fulfillment.shippingCarriersAvailable.map(c => <option key={c} value={c}>{c}</option>) : null}
                 {!order.fulfillment.shippingCarriersAvailable.includes("기타직접입력") && <option value="기타직접입력">기타직접입력</option>}
               </select>
             </div>
@@ -147,7 +147,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
           <section className="modal-section" aria-labelledby={`history-heading-${order.id}`}>
             <h4 id={`history-heading-${order.id}`}>주문 처리 이력</h4>
             <ul className="order-history-list">
-              {order.history.map((h, index) => <li key={index}>{h.timestamp} - {h.event}</li>)}
+              {order && Array.isArray(order.history) ? order.history.map((h, index) => <li key={index}>{h.timestamp} - {h.event}</li>) : null}
             </ul>
           </section>
         </div>
