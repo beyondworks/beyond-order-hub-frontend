@@ -151,20 +151,14 @@ const AppContent: React.FC = () => {
   }, [currentUser, toastContext, handleApiAuthError]); 
   
   useEffect(() => {
-    if (currentUser) {
-        loadInitialData();
-    } else {
-        setAppLoading(false); 
-        const hash = window.location.hash.replace('#', '');
-        // If there's a token, an implicit attempt to load data will occur if currentUser was set.
-        // If that fails with AUTH_ERROR, handleApiAuthError via loadInitialData will trigger logout.
-        // Otherwise, if no currentUser and not on login, redirect to login.
-        if (hash !== 'login' && hash !== '') {
-            setCurrentPage('login'); 
-            window.location.hash = 'login'; 
-        }
+    if (!currentUser) {
+      setAppLoading(false);
+      setCurrentPage('login');
+      return;
     }
-  }, [currentUser, loadInitialData]);
+    setAppLoading(true);
+    loadInitialData();
+  }, [currentUser]);
 
 
   const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
