@@ -27,6 +27,23 @@ import StockMovementModal from './components/Inventory/StockMovementModal';
 import ShippingProcessModal from './components/Shipping/ShippingProcessModal';
 import ToastContainer from './components/Common/ToastNotifications/ToastContainer';
 
+// fetch에 timeout 적용 유틸
+function fetchWithTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -110,45 +127,42 @@ const AppContent: React.FC = () => {
     }
     setAppLoading(true);
     try {
-      const [
-        fetchedUsers, fetchedOrders, fetchedProducts,
-        fetchedStockMovements, fetchedReturnRequests,
-        fetchedPlatformConfigs, fetchedThreePLConfigData, fetchedErrorLogs
-      ] = await Promise.all([
-        api.fetchUsers(),
-        api.fetchOrders(),
-        api.fetchProducts(),
-        api.fetchStockMovements(),
-        api.fetchReturnRequests(),
-        api.fetchPlatformConfigs(),
-        api.fetchThreePLConfig(),
-        api.fetchErrorLogs(),
+      const results = await Promise.allSettled([
+        fetchWithTimeout(api.fetchUsers(), 5000),
+        fetchWithTimeout(api.fetchOrders(), 5000),
+        fetchWithTimeout(api.fetchProducts(), 5000),
+        fetchWithTimeout(api.fetchStockMovements(), 5000),
+        fetchWithTimeout(api.fetchReturnRequests(), 5000),
+        fetchWithTimeout(api.fetchPlatformConfigs(), 5000),
+        fetchWithTimeout(api.fetchThreePLConfig(), 5000),
+        fetchWithTimeout(api.fetchErrorLogs(), 5000),
       ]);
-      
-      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
-      setAllOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
-      setProducts(Array.isArray(fetchedProducts) ? fetchedProducts : []);
-      setStockMovements(Array.isArray(fetchedStockMovements) ? fetchedStockMovements : []);
-      setReturnRequests(Array.isArray(fetchedReturnRequests) ? fetchedReturnRequests : []);
-      setPlatformConfigs(Array.isArray(fetchedPlatformConfigs) ? fetchedPlatformConfigs.map(cfg => ({
+      const failed: string[] = [];
+      setUsers(results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : (failed.push('users'), []));
+      setAllOrders(results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : (failed.push('orders'), []));
+      setProducts(results[2].status === 'fulfilled' && Array.isArray(results[2].value) ? results[2].value : (failed.push('products'), []));
+      setStockMovements(results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value : (failed.push('stock-movements'), []));
+      setReturnRequests(results[4].status === 'fulfilled' && Array.isArray(results[4].value) ? results[4].value : (failed.push('returns'), []));
+      setPlatformConfigs(results[5].status === 'fulfilled' && Array.isArray(results[5].value) ? results[5].value.map(cfg => ({
         ...cfg,
         fields: Array.isArray(cfg.fields) ? cfg.fields : [],
         logoPlaceholder: typeof cfg.logoPlaceholder === 'string' ? cfg.logoPlaceholder : '',
         connectionStatus: typeof cfg.connectionStatus === 'string' ? cfg.connectionStatus : 'not_configured',
         lastSync: typeof cfg.lastSync === 'string' ? cfg.lastSync : '',
-      })) : []);
-      setThreePLConfig(fetchedThreePLConfigData && typeof fetchedThreePLConfigData === 'object' ? fetchedThreePLConfigData : null);
-      setErrorLogs(Array.isArray(fetchedErrorLogs) ? fetchedErrorLogs : []);
-      toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
-    } catch (error: any) { 
-      console.error("Failed to load initial data:", error);
-      if (!handleApiAuthError(error)) {
-        toastContext?.addToast(error.message || '초기 데이터 로딩 중 오류가 발생했습니다.', 'error');
+      })) : (failed.push('platform-configs'), []));
+      setThreePLConfig(results[6].status === 'fulfilled' && typeof results[6].value === 'object' ? results[6].value : (failed.push('3pl-config'), null));
+      setErrorLogs(results[7].status === 'fulfilled' && Array.isArray(results[7].value) ? results[7].value : (failed.push('errors'), []));
+      if (failed.length > 0) {
+        toastContext?.addToast(`일부 데이터 로딩 실패: ${failed.join(', ')}`, 'warning');
+      } else {
+        toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
       }
+    } catch (error: any) {
+      toastContext?.addToast(error.message || '초기 데이터 로딩 중 오류가 발생했습니다.', 'error');
     } finally {
       setAppLoading(false);
     }
-  }, [currentUser, toastContext, handleApiAuthError]); 
+  }, [currentUser, toastContext]); 
   
   useEffect(() => {
     if (!currentUser) {
