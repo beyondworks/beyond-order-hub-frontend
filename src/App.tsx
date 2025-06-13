@@ -10,6 +10,8 @@ import PlatformSettingsPage from './pages/PlatformSettingsPage';
 import ErrorLogPage from './pages/ErrorLogPage';
 import LoginPage from './pages/LoginPage';
 import ReturnsManagementPage from './pages/ReturnsManagementPage';
+import ReturnsPageSimple from './pages/ReturnsPageSimple';
+import ErrorsPageSimple from './pages/ErrorsPageSimple';
 import ProductManagementPage from './pages/ProductManagementPage';
 import InventoryManagementPage from './pages/InventoryManagementPage';
 import ShippingManagementPage from './pages/ShippingManagementPage';
@@ -761,7 +763,7 @@ const AppContent: React.FC = () => {
       break;
     case 'returns':
       console.log('Rendering returns page with', returnRequests.length, 'return requests');
-      content = <ReturnsManagementPage initialReturnRequests={returnRequests} onOpenReturnModal={handleOpenReturnModal} currentUser={currentUser} />;
+      content = <ReturnsPageSimple />;
       break;
     case 'platform-settings':
       content = (safePlatformConfigs.length > 0 && safeThreePLConfig) ? (
@@ -786,7 +788,7 @@ const AppContent: React.FC = () => {
       break;
     case 'errors':
       console.log('Rendering errors page with', errorLogs.length, 'error logs');
-      content = <ErrorLogPage initialErrorLogs={errorLogs} onResolveError={handleResolveErrorLog} />;
+      content = <ErrorsPageSimple />;
       break;
     default:
       console.log('Default case triggered for page:', currentPage);
