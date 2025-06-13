@@ -95,7 +95,7 @@ const AppContent: React.FC = () => {
   const handleLogout = useCallback(() => {
     const userName = currentUser?.name;
     api.logout(); // Clear token from localStorage
-    setCurrentUser(null);
+    setCurrentUser(null); // 페이지 설정은 useEffect에서 자동 처리
     // Clear all data states
     setUsers([]);
     setAllOrders([]);
@@ -105,8 +105,6 @@ const AppContent: React.FC = () => {
     setPlatformConfigs([]);
     setThreePLConfig(null);
     setErrorLogs([]);
-    setCurrentPage('login'); 
-    window.location.hash = 'login';
     if (userName) { 
         toastContext?.addToast(`${userName}님이 로그아웃하였습니다.`, 'info');
     }
@@ -169,33 +167,36 @@ const AppContent: React.FC = () => {
           setAppLoading(true);
           const userFromApi = await api.fetchMe();
           setCurrentUser(userFromApi);
-          const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
-          setCurrentPage(defaultPage);
-          window.location.hash = defaultPage;
+          // 페이지 설정은 별도 useEffect에서 처리
           await loadInitialData();
         } catch (error: any) {
           if (error.message?.startsWith('AUTH_ERROR:')) {
             localStorage.removeItem('authToken');
           }
-          setCurrentPage('login');
-          window.location.hash = 'login';
+          // 에러 시에만 로그인 페이지로
+          setCurrentUser(null);
         } finally {
           setAppLoading(false);
         }
-      } else if (!currentUser) {
+      } else if (!token) {
         setAppLoading(false);
-        setCurrentPage('login');
-        window.location.hash = 'login';
       }
     };
 
     initializeAuth();
   }, []); // 빈 의존성 배열로 한 번만 실행
 
+  // currentUser 변경 시 페이지 설정
   useEffect(() => {
     if (!currentUser) {
       setAppLoading(false);
       setCurrentPage('login');
+      window.location.hash = 'login';
+    } else {
+      // 로그인된 사용자의 기본 페이지 설정
+      const defaultPage = userRolesConfig[currentUser.role]?.[0] || 'dashboard';
+      setCurrentPage(defaultPage);
+      window.location.hash = defaultPage;
     }
   }, [currentUser]);
 
@@ -203,9 +204,7 @@ const AppContent: React.FC = () => {
     setIsLoggingIn(true);
     try {
       const userFromApi = await api.login(username, passwordAttempt);
-      setCurrentUser(userFromApi);
-      const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
-      handleNavigation(defaultPage);
+      setCurrentUser(userFromApi); // 페이지 설정은 useEffect에서 자동 처리
       toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
       await loadInitialData();
       return true;
@@ -635,32 +634,38 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
+      
+      // 로그인되지 않은 상태에서는 login 페이지만 허용
       if (!currentUser) {
         if (hash !== 'login' && hash !== '') {
           window.location.hash = 'login';
         }
-        setAppLoading(false); 
         return;
       }
       
+      // 로그인된 상태에서의 페이지 네비게이션 처리
       const allowedPages = userRolesConfig[currentUser.role] || [];
       const defaultPage = allowedPages[0] || 'dashboard';
 
-      if (hash && allowedPages.includes(hash)) {
+      // 현재 페이지와 같으면 변경하지 않음 (무한 루프 방지)
+      if (hash && allowedPages.includes(hash) && currentPage !== hash) {
         setCurrentPage(hash);
       } else if (hash && !allowedPages.includes(hash) && hash !== 'login') { 
-        setCurrentPage(defaultPage);
-        window.location.hash = defaultPage;
-        toastContext?.addToast('접근 권한이 없거나 존재하지 않는 페이지입니다. 대시보드로 이동합니다.', 'warning');
-      } else if (!hash || (hash === 'login' && currentUser)) { 
+        if (currentPage !== defaultPage) {
+          setCurrentPage(defaultPage);
+          window.location.hash = defaultPage;
+          toastContext?.addToast('접근 권한이 없거나 존재하지 않는 페이지입니다. 대시보드로 이동합니다.', 'warning');
+        }
+      } else if ((!hash || hash === 'login') && currentPage !== defaultPage) { 
         setCurrentPage(defaultPage);
         window.location.hash = defaultPage;
       }
     };
+    
     window.addEventListener('hashchange', handleHashChange);
     handleHashChange(); 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser, toastContext]);
+  }, [currentUser, currentPage, toastContext]);
 
 
   if (!currentUser) {
