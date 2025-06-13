@@ -119,8 +119,10 @@ const AppContent: React.FC = () => {
 
 
   const loadInitialData = useCallback(async () => {
+    console.log('Starting loadInitialData...');
     setAppLoading(true);
     try {
+      console.log('Fetching initial data from APIs...');
       const results = await Promise.allSettled([
         fetchWithTimeout(api.fetchUsers(), 5000),
         fetchWithTimeout(api.fetchOrders(), 5000),
@@ -131,6 +133,9 @@ const AppContent: React.FC = () => {
         fetchWithTimeout(api.fetchThreePLConfig(), 5000),
         fetchWithTimeout(api.fetchErrorLogs(), 5000),
       ]);
+      
+      console.log('API results:', results.map((r, i) => `${i}: ${r.status}`));
+      
       const failed: string[] = [];
       setUsers(results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : (failed.push('users'), []));
       setAllOrders(results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : (failed.push('orders'), []));
@@ -146,14 +151,32 @@ const AppContent: React.FC = () => {
       })) : (failed.push('platform-configs'), []));
       setThreePLConfig(results[6].status === 'fulfilled' && typeof results[6].value === 'object' ? results[6].value : (failed.push('3pl-config'), null));
       setErrorLogs(results[7].status === 'fulfilled' && Array.isArray(results[7].value) ? results[7].value : (failed.push('errors'), []));
+      
+      console.log('Failed APIs:', failed);
+      
       if (failed.length > 0) {
-        toastContext?.addToast(`일부 데이터 로딩 실패: ${failed.join(', ')}`, 'warning');
+        console.log('Some APIs failed, but continuing with available data');
+        toastContext?.addToast(`일부 데이터 로딩 실패: ${failed.join(', ')}. 기본 데이터로 진행합니다.`, 'warning');
       } else {
         toastContext?.addToast('모든 데이터를 성공적으로 불러왔습니다.', 'success');
       }
     } catch (error: any) {
-      toastContext?.addToast(error.message || '초기 데이터 로딩 중 오류가 발생했습니다.', 'error');
+      console.log('loadInitialData error:', error.message);
+      // AUTH_ERROR가 아닌 경우에만 토스트 표시
+      if (!error.message?.startsWith('AUTH_ERROR:')) {
+        toastContext?.addToast('서버 연결 오류가 발생했습니다. 기본 데이터로 진행합니다.', 'warning');
+      }
+      // 에러가 발생해도 기본 데이터로 진행
+      setUsers([]);
+      setAllOrders([]);
+      setProducts([]);
+      setStockMovements([]);
+      setReturnRequests([]);
+      setPlatformConfigs([]);
+      setThreePLConfig(null);
+      setErrorLogs([]);
     } finally {
+      console.log('loadInitialData completed, setting appLoading to false');
       setAppLoading(false);
     }
   }, [toastContext]);
@@ -180,6 +203,7 @@ const AppContent: React.FC = () => {
           }
           // 에러 시에만 로그인 페이지로
           setCurrentUser(null);
+          setAppLoading(false); // 에러 시에도 로딩 중지
         } finally {
           setAppLoading(false);
         }
@@ -216,8 +240,16 @@ const AppContent: React.FC = () => {
       console.log('Login successful for user:', userFromApi.name, 'role:', userFromApi.role);
       setCurrentUser(userFromApi); // 페이지 설정은 useEffect에서 자동 처리
       toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
-      await loadInitialData();
-      console.log('Initial data loaded, login process complete');
+      
+      // loadInitialData는 별도로 처리하여 로그인 성공 상태를 유지
+      try {
+        await loadInitialData();
+        console.log('Initial data loaded, login process complete');
+      } catch (error: any) {
+        console.log('Initial data loading failed, but login successful');
+        // 데이터 로딩 실패는 로그인 성공에 영향 없음
+      }
+      
       return true;
     } catch (error: any) {
       console.log('Login failed:', error.message);

@@ -25,13 +25,23 @@ function getAuthHeaders(isJsonContent: boolean = true): HeadersInit {
 
 // Generic API request helper
 async function makeApiRequest<T>(path: string, method: string = 'GET', body?: any, isJsonContent: boolean = true): Promise<T> {
+  const token = getAuthToken();
+  const headers = getAuthHeaders(isJsonContent);
+  
+  console.log(`API Request: ${method} ${API_BASE_URL}${path}`);
+  console.log('Token exists:', !!token);
+  console.log('Authorization header:', headers['Authorization'] ? 'Present' : 'Missing');
+  
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers: getAuthHeaders(isJsonContent),
+    headers,
     body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
   });
 
+  console.log(`API Response: ${response.status} for ${path}`);
+
   if (response.status === 401) {
+    console.log('401 Unauthorized - removing token');
     localStorage.removeItem('authToken'); // Clear token on 401
     // Throw a specific error to be caught by App.tsx for logout handling
     throw new Error('AUTH_ERROR: Session expired or invalid. Please login again.');
