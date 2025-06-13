@@ -189,12 +189,14 @@ const AppContent: React.FC = () => {
   // currentUser 변경 시 페이지 설정
   useEffect(() => {
     if (!currentUser) {
+      console.log('No currentUser, redirecting to login');
       setAppLoading(false);
       setCurrentPage('login');
       window.location.hash = 'login';
     } else {
       // 로그인된 사용자의 기본 페이지 설정
       const defaultPage = userRolesConfig[currentUser.role]?.[0] || 'dashboard';
+      console.log('Setting page for user:', currentUser.name, 'role:', currentUser.role, 'defaultPage:', defaultPage);
       setCurrentPage(defaultPage);
       window.location.hash = defaultPage;
     }
@@ -688,9 +690,12 @@ const AppContent: React.FC = () => {
     ? allOrders.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()).slice(0, 5)
     : [];
 
+  console.log('Current page rendering:', currentPage, 'User:', currentUser?.name);
+  
   let content;
   switch (currentPage) {
     case 'dashboard':
+      console.log('Rendering dashboard page');
       content = <DashboardPage orders={recentOrdersForDashboard} products={products} onViewDetails={handleViewOrderDetails} />;
       break;
     case 'products':
@@ -733,17 +738,20 @@ const AppContent: React.FC = () => {
       content = <ErrorLogPage initialErrorLogs={errorLogs} onResolveError={handleResolveErrorLog} />;
       break;
     default:
+      console.log('Default case triggered for page:', currentPage);
       if(currentUser){
         const defaultUserPage = userRolesConfig[currentUser.role]?.[0] || 'dashboard';
-        if(currentPage !== defaultUserPage) { 
-            handleNavigation(defaultUserPage);
-        } else { 
-            content = <div className="main-content"><p>페이지를 로드할 수 없습니다. 기본 페이지로 이동합니다.</p></div>;
+        console.log('Redirecting to default page:', defaultUserPage);
+        // 기본 페이지로 즉시 대시보드 렌더링
+        content = <DashboardPage orders={recentOrdersForDashboard} products={products} onViewDetails={handleViewOrderDetails} />;
+        // 페이지 상태도 업데이트
+        if(currentPage !== defaultUserPage) {
+          setCurrentPage(defaultUserPage);
+          window.location.hash = defaultUserPage;
         }
-        // Return null or a placeholder during navigation to avoid rendering default content briefly
-        return null; 
+      } else {
+        content = <div className="main-content"><p>페이지를 찾을 수 없습니다.</p></div>;
       }
-      content = <div className="main-content"><p>페이지를 찾을 수 없습니다.</p></div>;
   }
 
   return (
