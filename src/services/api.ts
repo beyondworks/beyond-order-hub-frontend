@@ -72,6 +72,8 @@ export const logout = (): void => {
   // Potentially notify backend about logout if needed, but not specified.
 };
 
+export const fetchMe = (): Promise<User> => makeApiRequest<User>('/users/me');
+
 
 // --- Data Fetching ---
 export const fetchUsers = (): Promise<User[]> => makeApiRequest<User[]>('/users');

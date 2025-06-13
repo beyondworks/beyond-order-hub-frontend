@@ -121,10 +121,6 @@ const AppContent: React.FC = () => {
 
 
   const loadInitialData = useCallback(async () => {
-    if (!currentUser) {
-      setAppLoading(false);
-      return;
-    }
     setAppLoading(true);
     try {
       const results = await Promise.allSettled([
@@ -162,27 +158,56 @@ const AppContent: React.FC = () => {
     } finally {
       setAppLoading(false);
     }
-  }, [currentUser, toastContext]); 
-  
+  }, [toastContext]);
+
+  // 앱 시작 시 토큰으로 자동 로그인 시도
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      if (token && !currentUser) {
+        try {
+          setAppLoading(true);
+          const userFromApi = await api.fetchMe();
+          setCurrentUser(userFromApi);
+          const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
+          setCurrentPage(defaultPage);
+          window.location.hash = defaultPage;
+          await loadInitialData();
+        } catch (error: any) {
+          if (error.message?.startsWith('AUTH_ERROR:')) {
+            localStorage.removeItem('authToken');
+          }
+          setCurrentPage('login');
+          window.location.hash = 'login';
+        } finally {
+          setAppLoading(false);
+        }
+      } else if (!currentUser) {
+        setAppLoading(false);
+        setCurrentPage('login');
+        window.location.hash = 'login';
+      }
+    };
+
+    initializeAuth();
+  }, []); // 빈 의존성 배열로 한 번만 실행
+
   useEffect(() => {
     if (!currentUser) {
       setAppLoading(false);
       setCurrentPage('login');
-      return;
     }
-    setAppLoading(true);
-    loadInitialData();
   }, [currentUser]);
-
 
   const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
     setIsLoggingIn(true);
     try {
-      const userFromApi = await api.login(username, passwordAttempt); // api.login returns User object directly
-      setCurrentUser(userFromApi); 
+      const userFromApi = await api.login(username, passwordAttempt);
+      setCurrentUser(userFromApi);
       const defaultPage = userRolesConfig[userFromApi.role]?.[0] || 'dashboard';
-      handleNavigation(defaultPage); 
+      handleNavigation(defaultPage);
       toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
+      await loadInitialData();
       return true;
     } catch (error: any) {
       if (!handleApiAuthError(error)) {
@@ -192,8 +217,7 @@ const AppContent: React.FC = () => {
     } finally {
       setIsLoggingIn(false);
     }
-  }, [toastContext, handleApiAuthError]);
-
+  }, [toastContext, handleApiAuthError, loadInitialData]);
 
   const handleNavigation = (page: string) => {
     if (!currentUser && page !== 'login') {
@@ -612,9 +636,8 @@ const AppContent: React.FC = () => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
       if (!currentUser) {
-        if (currentPage !== 'login') {
-            setCurrentPage('login'); 
-            if (hash !== 'login' && hash !== '') window.location.hash = 'login'; 
+        if (hash !== 'login' && hash !== '') {
+          window.location.hash = 'login';
         }
         setAppLoading(false); 
         return;
@@ -624,20 +647,20 @@ const AppContent: React.FC = () => {
       const defaultPage = allowedPages[0] || 'dashboard';
 
       if (hash && allowedPages.includes(hash)) {
-        if (currentPage !== hash) setCurrentPage(hash);
+        setCurrentPage(hash);
       } else if (hash && !allowedPages.includes(hash) && hash !== 'login') { 
-        if (currentPage !== defaultPage) setCurrentPage(defaultPage);
-        if (window.location.hash !== `#${defaultPage}`) window.location.hash = defaultPage;
+        setCurrentPage(defaultPage);
+        window.location.hash = defaultPage;
         toastContext?.addToast('접근 권한이 없거나 존재하지 않는 페이지입니다. 대시보드로 이동합니다.', 'warning');
-      } else if ((!hash && currentPage !== defaultPage) || (!hash && currentPage === 'login' && currentUser)) { 
-        if (currentPage !== defaultPage) setCurrentPage(defaultPage);
-        if (window.location.hash !== `#${defaultPage}`) window.location.hash = defaultPage;
+      } else if (!hash || (hash === 'login' && currentUser)) { 
+        setCurrentPage(defaultPage);
+        window.location.hash = defaultPage;
       }
     };
     window.addEventListener('hashchange', handleHashChange);
     handleHashChange(); 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentUser, appLoading, currentPage, toastContext]);
+  }, [currentUser, toastContext]);
 
 
   if (!currentUser) {

@@ -21,6 +21,12 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  // 현재 사용자 정보 조회 (로그인한 사용자 본인)
+  @Get('me')
+  async getMe(@Request() req) {
+    return this.usersService.findOne(req.user.sub);
+  }
+
   // 사용자 전체 조회 (master만)
   @Get()
   @Roles('master')
