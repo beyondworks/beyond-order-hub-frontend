@@ -162,14 +162,19 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('authToken');
+      console.log('Initializing auth, token exists:', !!token, 'currentUser exists:', !!currentUser);
+      
       if (token && !currentUser) {
         try {
+          console.log('Attempting to fetch user with token');
           setAppLoading(true);
           const userFromApi = await api.fetchMe();
+          console.log('User fetched successfully:', userFromApi.name, userFromApi.role);
           setCurrentUser(userFromApi);
           // 페이지 설정은 별도 useEffect에서 처리
           await loadInitialData();
         } catch (error: any) {
+          console.log('Auth error during initialization:', error.message);
           if (error.message?.startsWith('AUTH_ERROR:')) {
             localStorage.removeItem('authToken');
           }
@@ -179,6 +184,7 @@ const AppContent: React.FC = () => {
           setAppLoading(false);
         }
       } else if (!token) {
+        console.log('No token found, setting app loading to false');
         setAppLoading(false);
       }
     };
@@ -203,14 +209,18 @@ const AppContent: React.FC = () => {
   }, [currentUser]);
 
   const handleLogin = useCallback(async (username: string, passwordAttempt: string): Promise<boolean> => {
+    console.log('Login attempt for user:', username);
     setIsLoggingIn(true);
     try {
       const userFromApi = await api.login(username, passwordAttempt);
+      console.log('Login successful for user:', userFromApi.name, 'role:', userFromApi.role);
       setCurrentUser(userFromApi); // 페이지 설정은 useEffect에서 자동 처리
       toastContext?.addToast(`${userFromApi.name}님, 환영합니다!`, 'success');
       await loadInitialData();
+      console.log('Initial data loaded, login process complete');
       return true;
     } catch (error: any) {
+      console.log('Login failed:', error.message);
       if (!handleApiAuthError(error)) {
         toastContext?.addToast(error.message || '로그인 중 오류가 발생했습니다.', 'error');
       }
