@@ -263,18 +263,25 @@ const AppContent: React.FC = () => {
   }, [toastContext, handleApiAuthError, loadInitialData]);
 
   const handleNavigation = (page: string) => {
+    console.log('Navigation requested to:', page, 'Current user role:', currentUser?.role);
+    
     if (!currentUser && page !== 'login') {
+      console.log('No user, redirecting to login');
       setCurrentPage('login');
       window.location.hash = 'login';
       return;
     }
+    
     if (currentUser && userRolesConfig[currentUser.role] && !userRolesConfig[currentUser.role].includes(page)) {
       const defaultPage = userRolesConfig[currentUser.role]?.[0] || 'dashboard';
+      console.log('Page not allowed, redirecting to:', defaultPage);
       setCurrentPage(defaultPage);
       window.location.hash = defaultPage;
       toastContext?.addToast('접근 권한이 없는 페이지입니다. 대시보드로 이동합니다.', 'warning');
       return;
     }
+    
+    console.log('Setting current page to:', page);
     setCurrentPage(page);
     window.location.hash = page;
   };
@@ -753,6 +760,7 @@ const AppContent: React.FC = () => {
       content = <AllOrdersPage orders={allOrders} onViewDetails={handleViewOrderDetails} />;
       break;
     case 'returns':
+      console.log('Rendering returns page with', returnRequests.length, 'return requests');
       content = <ReturnsManagementPage initialReturnRequests={returnRequests} onOpenReturnModal={handleOpenReturnModal} currentUser={currentUser} />;
       break;
     case 'platform-settings':
@@ -777,6 +785,7 @@ const AppContent: React.FC = () => {
       );
       break;
     case 'errors':
+      console.log('Rendering errors page with', errorLogs.length, 'error logs');
       content = <ErrorLogPage initialErrorLogs={errorLogs} onResolveError={handleResolveErrorLog} />;
       break;
     default:
