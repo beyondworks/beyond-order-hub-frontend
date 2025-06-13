@@ -46,7 +46,10 @@ async function bootstrap() {
   // CORS 설정 (프론트엔드 개발자 참고)
   app.enableCors({
     origin: [
-      'https://beyondworks.github.io', // GitHub Pages 프론트엔드
+      'https://beyondworks.github.io',
+      'https://beyondworks.github.io/beyond-order-hub-frontend',
+      'http://localhost:3000', // 로컬 개발용
+      'http://localhost:5173', // Vite 개발 서버
     ],
     credentials: true, // 인증정보(쿠키 등) 허용
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
