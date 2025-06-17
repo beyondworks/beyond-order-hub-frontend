@@ -7,6 +7,7 @@ export interface Order {
   customerName: string;
   status: string;
   platformOrderId: string;
+  channelId?: string; // 채널 ID 추가
   hasReturnOrExchange?: boolean; // 반품/교환 여부
   returnStatus?: ReturnRequestStatus; // 간략한 반품/교환 상태
   shippingInfo?: { // 배송 정보 필드 추가
@@ -202,3 +203,6 @@ export interface ToastMessage {
   message: string;
   type: 'success' | 'error' | 'info' | 'warning';
 }
+
+// 채널 관련 타입들 (modules/channels/types에서 재export)
+export * from './modules/channels/types/channel.types';

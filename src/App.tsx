@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import ReturnsManagementPage from './pages/ReturnsManagementPage';
 import ReturnsPageSimple from './pages/ReturnsPageSimple';
 import ErrorsPageSimple from './pages/ErrorsPageSimple';
+import ChannelSettingsPage from './pages/ChannelSettingsPage';
 import ProductManagementPage from './pages/ProductManagementPage';
 import InventoryManagementPage from './pages/InventoryManagementPage';
 import ShippingManagementPage from './pages/ShippingManagementPage';
@@ -79,8 +80,8 @@ const AppContent: React.FC = () => {
 
 
   const userRolesConfig: { [key: string]: string[] } = {
-    master: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'platform-settings', 'errors'],
-    user: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'errors'],
+    master: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'channel-settings', 'platform-settings', 'errors'],
+    user: ['dashboard', 'products', 'inventory', 'shipping', 'orders', 'returns', 'channel-settings', 'errors'],
   };
 
   // Centralized Auth Error Handler
@@ -764,6 +765,10 @@ const AppContent: React.FC = () => {
     case 'returns':
       console.log('Rendering returns page with', returnRequests.length, 'return requests');
       content = <ReturnsPageSimple />;
+      break;
+    case 'channel-settings':
+      console.log('Rendering channel settings page');
+      content = <ChannelSettingsPage currentUser={currentUser} />;
       break;
     case 'platform-settings':
       content = (safePlatformConfigs.length > 0 && safeThreePLConfig) ? (

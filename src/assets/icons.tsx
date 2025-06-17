@@ -176,3 +176,9 @@ export const ClipboardListIcon = () => ( // For "Current Stock" tab
     <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14h-4v-2h4v2zm3-4H9v-2h6v2zm0-4H9V7h6v2z"/>
   </svg>
 );
+
+export const ChannelIcon = () => ( // 채널 연동용 아이콘
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+    <path d="M3 9h2V7c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v2h2c.55 0 1 .45 1 1v5c0 .55-.45 1-1 1h-2v2c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2v-2H3c-.55 0-1-.45-1-1v-5c0-.55.45-1 1-1zm4-2v10h10V7H7zm-2 4v3h2v-3H5zm14 0v3h2v-3h-2z"/>
+  </svg>
+);
