@@ -246,17 +246,26 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
               return (
                 <section key={channel.id} className="platform-config-card" aria-labelledby={`channel-title-${channel.id}`}>
                   <header className="platform-card-header">
-                    <div className="platform-logo-placeholder">
-                      {channel.type === 'oauth' && '🔐'}
-                      {channel.type === 'api' && '🔑'}
-                      {channel.type === 'webhook' && '🔗'}
+                    <div className="platform-info">
+                      <div className="platform-logo-placeholder">
+                        {channel.id === 'naver' && '🛒'}
+                        {channel.id === 'coupang' && '📦'}
+                        {channel.id === '29cm' && '👕'}
+                        {channel.id === 'ohouse' && '🏠'}
+                        {channel.id === 'cjonstyle' && '📺'}
+                        {channel.id === 'kakao' && '💬'}
+                        {channel.id === 'imweb' && '🌐'}
+                        {channel.id === 'toss' && '💳'}
+                      </div>
+                      <div>
+                        <h3 id={`channel-title-${channel.id}`}>{channel.name}</h3>
+                        <p className="channel-type-info">{channel.type.toUpperCase()} 연동</p>
+                      </div>
                     </div>
-                    <h3 id={`channel-title-${channel.id}`}>{channel.name}</h3>
                     <span className={`connection-status-badge ${statusInfo.className}`}>{statusInfo.text}</span>
                   </header>
                   <div className="platform-card-body">
                     <p className="platform-description">{channel.description}</p>
-                    <p className="channel-type-info">연동 방식: {channel.type.toUpperCase()}</p>
                     {channel.lastSync && (
                       <p className="last-sync-info">최근 동기화: {channel.lastSync}</p>
                     )}
