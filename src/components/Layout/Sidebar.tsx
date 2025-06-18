@@ -17,8 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onNavigate, currentUser }
     { id: 'inventory', label: '재고 관리', icon: <ArchiveIcon />, roles: ['master', 'user'] },
     { id: 'shipping', label: '배송 관리', icon: <TruckIcon />, roles: ['master', 'user'] },
     { id: 'returns', label: '반품/교환 관리', icon: <UndoIcon />, roles: ['master', 'user'] },
-    { id: 'channel-settings', label: '판매채널 연동', icon: <ChannelIcon />, roles: ['master', 'user'] },
-    { id: 'platform-settings', label: '시스템 설정', icon: <SettingsIcon />, roles: ['master'] },
+    { id: 'platform-settings', label: '시스템 설정', icon: <SettingsIcon />, roles: ['master', 'user'] },
     { id: 'errors', label: '오류 내역', icon: <AlertTriangleIcon />, roles: ['master', 'user'] },
   ];
 
