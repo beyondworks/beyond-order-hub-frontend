@@ -3,8 +3,7 @@ import { PlatformConfig, ThreePLConfig, User } from '../types';
 import { getPlatformStatusInfo } from '../utils';
 import { SaveIcon, LinkIcon, ToggleOnIcon, ToggleOffIcon, UserIcon, UsersIcon } from '../assets/icons';
 import UserManagementTab from '../components/Settings/UserManagementTab';
-import { ChannelIntegrationService } from '../modules/channels/services/ChannelIntegrationService';
-import { ChannelConfig, NaverChannelConfig, CoupangChannelConfig } from '../modules/channels/types/channel.types';
+import { channelApi, ChannelResponse, ChannelConfigRequest } from '../services/channelApi';
 
 interface PlatformSettingsPageProps {
   currentUser: User | null;
@@ -32,10 +31,10 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('platforms');
   const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
-  const [channels, setChannels] = useState<ChannelConfig[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<ChannelConfig | null>(null);
+  const [channels, setChannels] = useState<ChannelResponse[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<ChannelResponse | null>(null);
   const [showChannelModal, setShowChannelModal] = useState(false);
-  const channelService = new ChannelIntegrationService();
+  const [channelFormData, setChannelFormData] = useState<ChannelConfigRequest | null>(null);
 
   const handleAction = async (action: () => Promise<void>, key?: string) => {
     const loadingKey = key || `action-${Date.now()}`;
@@ -55,94 +54,37 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
 
   // 채널 설정 초기화
   useEffect(() => {
-    const savedChannels = localStorage.getItem('channelConfigs');
-    if (savedChannels) {
-      setChannels(JSON.parse(savedChannels));
-    } else {
-      // 기본 채널 설정
-      const defaultChannels: ChannelConfig[] = [
-        {
-          id: 'naver',
-          name: '네이버 스마트스토어',
-          type: 'oauth',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/naver.png',
-          description: '네이버 스마트스토어 연동으로 상품 및 주문 관리',
-          clientId: '',
-          clientSecret: '',
-        } as NaverChannelConfig,
-        {
-          id: 'coupang',
-          name: '쿠팡',
-          type: 'api',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/coupang.png',
-          description: '쿠팡 파트너스 연동으로 판매 관리',
-          vendorId: '',
-          accessKey: '',
-          secretKey: '',
-        } as CoupangChannelConfig,
-        {
-          id: '29cm',
-          name: '29CM',
-          type: 'webhook',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/29cm.png',
-          description: '29CM 연동으로 패션 상품 판매',
-        },
-        {
-          id: 'ohouse',
-          name: '오늘의집',
-          type: 'webhook',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/ohouse.png',
-          description: '오늘의집 연동으로 홈 인테리어 상품 판매',
-        },
-        {
-          id: 'cjonstyle',
-          name: 'CJ온스타일',
-          type: 'api',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/cjonstyle.png',
-          description: 'CJ온스타일 TV 쇼핑 연동',
-        },
-        {
-          id: 'kakao',
-          name: '카카오톡 스토어',
-          type: 'oauth',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/kakao.png',
-          description: '카카오톡 스토어 연동으로 소셜 커머스',
-        },
-        {
-          id: 'imweb',
-          name: '아임웹',
-          type: 'api',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/imweb.png',
-          description: '아임웹 쇼핑몰 연동',
-        },
-        {
-          id: 'toss',
-          name: '토스쇼핑',
-          type: 'api',
-          status: 'disconnected',
-          logoUrl: '/assets/logos/toss.png',
-          description: '토스쇼핑 연동으로 간편 결제',
-        },
-      ];
-      setChannels(defaultChannels);
-    }
+    loadChannels();
   }, []);
 
-  const handleChannelSave = (config: ChannelConfig) => {
-    const updatedChannels = channels.map(ch => 
-      ch.id === config.id ? config : ch
-    );
-    setChannels(updatedChannels);
-    localStorage.setItem('channelConfigs', JSON.stringify(updatedChannels));
-    setShowChannelModal(false);
-    setSelectedChannel(null);
+  const loadChannels = async () => {
+    try {
+      const channelsData = await channelApi.getAllChannels();
+      setChannels(channelsData);
+    } catch (error) {
+      console.error('채널 목록 로드 실패:', error);
+      // 에러 발생 시 토스트 알림 표시 등
+    }
+  };
+
+  const handleChannelSave = async () => {
+    if (!selectedChannel || !channelFormData) return;
+
+    const loadingKey = `save-channel-${selectedChannel.channelId}`;
+    setLoadingStates(prev => ({ ...prev, [loadingKey]: true }));
+
+    try {
+      await channelApi.updateChannelConfig(selectedChannel.channelId, channelFormData);
+      await loadChannels(); // 목록 새로고침
+      setShowChannelModal(false);
+      setSelectedChannel(null);
+      setChannelFormData(null);
+    } catch (error) {
+      console.error('채널 설정 저장 실패:', error);
+      // 에러 알림 표시
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [loadingKey]: false }));
+    }
   };
 
   const handleChannelTest = async (channelId: string) => {
@@ -150,14 +92,15 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
     setLoadingStates(prev => ({ ...prev, [loadingKey]: true }));
     
     try {
-      // 실제 API 테스트 로직
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const updatedChannels = channels.map(ch => 
-        ch.id === channelId ? { ...ch, status: 'connected' as const, lastSync: new Date().toLocaleString() } : ch
-      );
-      setChannels(updatedChannels);
-      localStorage.setItem('channelConfigs', JSON.stringify(updatedChannels));
+      const result = await channelApi.testConnection(channelId);
+      if (result.success) {
+        console.log('연결 테스트 성공:', result.message);
+      } else {
+        console.error('연결 테스트 실패:', result.message);
+      }
+      await loadChannels(); // 목록 새로고침
+    } catch (error) {
+      console.error('연결 테스트 오류:', error);
     } finally {
       setLoadingStates(prev => ({ ...prev, [loadingKey]: false }));
     }
@@ -241,24 +184,24 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                 error: { text: '오류', className: 'status-error' },
               }[channel.status];
               
-              const isTestingChannel = loadingStates[`test-channel-${channel.id}`];
+              const isTestingChannel = loadingStates[`test-channel-${channel.channelId}`];
               
               return (
-                <section key={channel.id} className="platform-config-card" aria-labelledby={`channel-title-${channel.id}`}>
+                <section key={channel.channelId} className="platform-config-card" aria-labelledby={`channel-title-${channel.channelId}`}>
                   <header className="platform-card-header">
                     <div className="platform-info">
                       <div className="platform-logo-placeholder">
-                        {channel.id === 'naver' && '🛒'}
-                        {channel.id === 'coupang' && '📦'}
-                        {channel.id === '29cm' && '👕'}
-                        {channel.id === 'ohouse' && '🏠'}
-                        {channel.id === 'cjonstyle' && '📺'}
-                        {channel.id === 'kakao' && '💬'}
-                        {channel.id === 'imweb' && '🌐'}
-                        {channel.id === 'toss' && '💳'}
+                        {channel.channelId === 'naver' && '🛒'}
+                        {channel.channelId === 'coupang' && '📦'}
+                        {channel.channelId === '29cm' && '👕'}
+                        {channel.channelId === 'ohouse' && '🏠'}
+                        {channel.channelId === 'cjonstyle' && '📺'}
+                        {channel.channelId === 'kakao' && '💬'}
+                        {channel.channelId === 'imweb' && '🌐'}
+                        {channel.channelId === 'toss' && '💳'}
                       </div>
                       <div>
-                        <h3 id={`channel-title-${channel.id}`}>{channel.name}</h3>
+                        <h3 id={`channel-title-${channel.channelId}`}>{channel.name}</h3>
                         <p className="channel-type-info">{channel.type.toUpperCase()} 연동</p>
                       </div>
                     </div>
@@ -267,7 +210,7 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                   <div className="platform-card-body">
                     <p className="platform-description">{channel.description}</p>
                     {channel.lastSync && (
-                      <p className="last-sync-info">최근 동기화: {channel.lastSync}</p>
+                      <p className="last-sync-info">최근 동기화: {new Date(channel.lastSync).toLocaleString()}</p>
                     )}
                     <div className="form-actions">
                       <button 
@@ -275,6 +218,12 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                         className="action-button primary" 
                         onClick={() => {
                           setSelectedChannel(channel);
+                          setChannelFormData({
+                            channelId: channel.channelId,
+                            name: channel.name,
+                            type: channel.type,
+                            description: channel.description,
+                          });
                           setShowChannelModal(true);
                         }}
                       >
@@ -283,7 +232,7 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                       <button 
                         type="button" 
                         className="action-button" 
-                        onClick={() => handleChannelTest(channel.id)}
+                        onClick={() => handleChannelTest(channel.channelId)}
                         disabled={isTestingChannel}
                       >
                         <LinkIcon /> {isTestingChannel ? '테스트 중...' : '연결 테스트'}
@@ -339,7 +288,7 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
     </main>
     
     {/* 채널 설정 모달 */}
-    {showChannelModal && selectedChannel && (
+    {showChannelModal && selectedChannel && channelFormData && (
       <div className="modal-overlay" onClick={() => setShowChannelModal(false)}>
         <div className="modal-content channel-config-modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
@@ -353,11 +302,11 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                   <label>Client ID</label>
                   <input
                     type="text"
-                    value={(selectedChannel as NaverChannelConfig).clientId || ''}
-                    onChange={(e) => setSelectedChannel({
-                      ...selectedChannel,
+                    value={channelFormData.clientId || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
                       clientId: e.target.value,
-                    } as NaverChannelConfig)}
+                    })}
                     placeholder="Client ID 입력"
                   />
                 </div>
@@ -365,27 +314,27 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                   <label>Client Secret</label>
                   <input
                     type="password"
-                    value={(selectedChannel as NaverChannelConfig).clientSecret || ''}
-                    onChange={(e) => setSelectedChannel({
-                      ...selectedChannel,
+                    value={channelFormData.clientSecret || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
                       clientSecret: e.target.value,
-                    } as NaverChannelConfig)}
+                    })}
                     placeholder="Client Secret 입력"
                   />
                 </div>
               </>
             )}
-            {selectedChannel.type === 'api' && selectedChannel.id === 'coupang' && (
+            {selectedChannel.type === 'api' && selectedChannel.channelId === 'coupang' && (
               <>
                 <div className="form-group">
                   <label>Vendor ID</label>
                   <input
                     type="text"
-                    value={(selectedChannel as CoupangChannelConfig).vendorId || ''}
-                    onChange={(e) => setSelectedChannel({
-                      ...selectedChannel,
+                    value={channelFormData.vendorId || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
                       vendorId: e.target.value,
-                    } as CoupangChannelConfig)}
+                    })}
                     placeholder="Vendor ID 입력"
                   />
                 </div>
@@ -393,11 +342,11 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                   <label>Access Key</label>
                   <input
                     type="text"
-                    value={(selectedChannel as CoupangChannelConfig).accessKey || ''}
-                    onChange={(e) => setSelectedChannel({
-                      ...selectedChannel,
+                    value={channelFormData.accessKey || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
                       accessKey: e.target.value,
-                    } as CoupangChannelConfig)}
+                    })}
                     placeholder="Access Key 입력"
                   />
                 </div>
@@ -405,11 +354,39 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
                   <label>Secret Key</label>
                   <input
                     type="password"
-                    value={(selectedChannel as CoupangChannelConfig).secretKey || ''}
-                    onChange={(e) => setSelectedChannel({
-                      ...selectedChannel,
+                    value={channelFormData.secretKey || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
                       secretKey: e.target.value,
-                    } as CoupangChannelConfig)}
+                    })}
+                    placeholder="Secret Key 입력"
+                  />
+                </div>
+              </>
+            )}
+            {selectedChannel.type === 'api' && selectedChannel.channelId !== 'coupang' && (
+              <>
+                <div className="form-group">
+                  <label>Access Key</label>
+                  <input
+                    type="text"
+                    value={channelFormData.accessKey || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
+                      accessKey: e.target.value,
+                    })}
+                    placeholder="Access Key 입력"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Secret Key</label>
+                  <input
+                    type="password"
+                    value={channelFormData.secretKey || ''}
+                    onChange={(e) => setChannelFormData({
+                      ...channelFormData,
+                      secretKey: e.target.value,
+                    })}
                     placeholder="Secret Key 입력"
                   />
                 </div>
@@ -431,9 +408,10 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
             </button>
             <button 
               className="action-button primary" 
-              onClick={() => handleChannelSave(selectedChannel)}
+              onClick={handleChannelSave}
+              disabled={loadingStates[`save-channel-${selectedChannel.channelId}`]}
             >
-              저장
+              {loadingStates[`save-channel-${selectedChannel.channelId}`] ? '저장 중...' : '저장'}
             </button>
           </div>
         </div>
