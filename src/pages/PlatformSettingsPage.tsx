@@ -164,6 +164,7 @@ const PlatformSettingsPage: React.FC<PlatformSettingsPageProps> = ({
   };
 
   return (
+    <>
     <main className="main-content settings-page" role="main" aria-labelledby="settings-title-h2">
       <h2 id="settings-title-h2">연동 및 계정 설정</h2>
       <div className="tabs-container">
